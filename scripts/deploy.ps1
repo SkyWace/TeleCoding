@@ -50,7 +50,7 @@ Write-Info ($profiles.Trim() -replace "`r?`n", "`n        ")
 if (-not $CertProfile) {
     # Lignes du type « NomDuProfil   O » ; on préfère le profil actif (O).
     $rows = ($profiles -split "`r?`n") | Where-Object { $_ -match '^\s*([A-Za-z0-9_\-\.]+)\s+(O|X)?\s*$' } |
-        ForEach-Object { [pscustomobject]@{ Name = $Matches[1]; Active = ($Matches[2] -eq 'O') } }
+        ForEach-Object { $null = $_ -match '^\s*([A-Za-z0-9_\-\.]+)\s+(O|X)?\s*$'; [pscustomobject]@{ Name = $Matches[1]; Active = ($Matches[2] -eq 'O') } }
     $pick = ($rows | Where-Object { $_.Active } | Select-Object -First 1)
     if (-not $pick) { $pick = $rows | Select-Object -First 1 }
     if ($pick) { $CertProfile = $pick.Name }
@@ -64,7 +64,7 @@ Write-Ok "Profil utilisé : $CertProfile"
 # --- 4. Build + signature ---------------------------------------------------
 Write-Step 4 "Construction du paquet .wgt"
 if (Test-Path $buildDir) { Remove-Item -Recurse -Force $buildDir }
-Copy-Item -Recurse $appDir $buildDir
+Copy-Item -Recurse $appDir $buildDir -ErrorAction Stop
 & $tizen build-web -out .buildResult -- $buildDir | Out-Host
 if ($LASTEXITCODE -ne 0) { Fail "Échec de tizen build-web." }
 & $tizen package -t wgt -s $CertProfile -- (Join-Path $buildDir '.buildResult') | Out-Host

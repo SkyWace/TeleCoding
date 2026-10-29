@@ -2,7 +2,9 @@
 # Valeurs par défaut modifiables via les variables d'environnement
 # TELECODING_TV_IP, TIZEN_HOME, TELECODING_PROFILE.
 
-$ErrorActionPreference = 'Stop'
+# 'Continue' et non 'Stop' : sous Windows PowerShell 5.1, 'Stop' transforme en erreur fatale
+# le moindre message que sdb ou tizen.bat écrit sur stderr. Les erreurs sont gérées par Fail.
+$ErrorActionPreference = 'Continue'
 
 $Script:AppId      = 'TlCdLaunch.TeleCoding'
 $Script:PackageId  = 'TlCdLaunch'
@@ -32,7 +34,7 @@ function Get-TizenCli {
 # Interroge l'API locale des TV Samsung (port 8001). Renvoie $null si ce n'est pas une Samsung.
 function Get-SamsungInfo([string]$ip, [int]$timeoutSec = 3) {
     try {
-        $r = Invoke-RestMethod -Uri "http://${ip}:8001/api/v2/" -TimeoutSec $timeoutSec -UseBasicParsing
+        $r = Invoke-RestMethod -Uri "http://${ip}:8001/api/v2/" -TimeoutSec $timeoutSec -UseBasicParsing -ErrorAction Stop
         if ($r.device) { return $r.device }
     } catch { }
     return $null
