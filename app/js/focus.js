@@ -15,6 +15,7 @@
 
     var scopes = []; // pile de { root, previous, memory }
     var current = null;
+    var listeners = [];
 
     function scope() { return scopes[scopes.length - 1]; }
 
@@ -89,6 +90,7 @@
         if (s && row) s.memory[row] = el;
         try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
         ensureVisible(el);
+        listeners.forEach(function (fn) { fn(el); });
     }
 
     function inDirection(dir, r, c) {
@@ -161,6 +163,7 @@
     TC.focus = {
         get current() { return current; },
         set: set,
+        onChange: function (fn) { listeners.push(fn); },
         move: move,
         forget: function (row) { var s = scope(); if (s) delete s.memory[row]; },
         recall: function (row) { var s = scope(); return s ? s.memory[row] : null; },

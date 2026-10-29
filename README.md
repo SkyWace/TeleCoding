@@ -1,8 +1,16 @@
 # TeleCoding
 
-Un écran d'accueil personnel pour ma TV **Samsung UE43CU7025** : fond noir, sans publicité, sans abonnement, sans serveur. On y trouve mes applications et mes entrées HDMI, et tout se pilote à la télécommande.
+Un écran d'accueil personnel pour ma TV **Samsung UE43CU7025** : sans publicité, sans abonnement, sans serveur. On y trouve mes applications et mes entrées HDMI, et tout se pilote à la télécommande.
 
-![Accueil TeleCoding](docs/accueil.png)
+![Accueil TeleCoding](docs/accueil-disney.png)
+
+Le design reprend celui du launcher Android [CleanYourTV](https://github.com/Gathin23/cleanyourtv) (licence MIT), adapté à Tizen :
+- un **halo** qui prend la couleur de l'appli sélectionnée ;
+- le **nom de l'appli en grand** au-dessus d'une **bande de grandes cartes** (les favoris) ;
+- la **grille** de toutes les applis en dessous ;
+- en haut, la salutation, l'heure et la date, avec des **pastilles** Entrées / Wi-Fi / Paramètres.
+
+La police Outfit vient de ce projet (licence OFL, voir `app/fonts/LICENSE.md`).
 
 ## Ce qu'il faut savoir sur cette TV
 
@@ -13,7 +21,7 @@ La CU7025 tourne sous **Tizen** (le système de Samsung), pas sous Android TV. �
 | Appli personnelle sans pub | ✅ | Appli web Tizen (`.wgt`) installée en mode développeur |
 | Détecter les applis installées | ✅ | `tizen.application.getAppsInfo()`, puis tri : la TV déclare ~450 entrées, surtout des services système. On garde les applis du store et les vraies applis intégrées (Netflix, Prime Video, Internet…). Les autres sont réglables dans *Paramètres ▸ Applis système* |
 | Lancer une appli | ✅ | `tizen.application.launch()` |
-| Entrées HDMI | ✅ (dans l'appli) | `tizen.tvwindow.setSource()` : l'entrée s'affiche en plein écran *dans* TeleCoding, et Retour ramène à l'accueil |
+| Entrées HDMI | ✅ (dans l'appli) | Pastille **Entrées** (menu déroulant) ou rangée optionnelle. `tizen.tvwindow.setSource()` : l'entrée s'affiche en plein écran *dans* TeleCoding, et Retour ramène à l'accueil |
 | Remplacer le Smart Hub / la touche HOME | ❌ | Impossible sur Tizen pour une appli tierce. HOME ouvre toujours le Smart Hub |
 | Ouvrir TeleCoding à l'allumage | ⚠️ | Réglage Samsung « Exécution auto. de la dernière appli », à activer soi-même |
 
@@ -33,11 +41,17 @@ Limites connues de l'affichage HDMI dans l'appli : tant que TeleCoding affiche l
 
 ## Paramètres (enregistrés sur la TV)
 
-Thème (Noir profond, Noir OLED, Graphite, Minuit, Ambre), fond d'écran (dégradés ou image par URL), animations (désactivées, discrètes, normales), heure 12 h / 24 h, date, météo (désactivée par défaut), favoris, ordre des sections.
+- **Apparence :** thème (Ambiance, qui suit la couleur de l'appli ; Minuit, Ambre, Émeraude ; Noir profond ; Noir OLED), fond d'écran (dégradés ou image par URL), applis par rangée (4, 5 ou 6), animations.
+- **En-tête :** salutation, heure 12 h / 24 h, date, météo (désactivée par défaut).
+- **Accueil :** favoris, rangée Entrées, ordre des rangées, applis système, applis masquées.
 
 ![Paramètres](docs/parametres.png)
 
+![Menu des entrées](docs/entrees.png)
+
 La météo est la seule fonction qui sort sur Internet. Elle interroge l'API gratuite [Open-Meteo](https://open-meteo.com), sans compte ni clé, et seulement si tu l'actives.
+
+Les captures viennent de l'aperçu navigateur : les icônes y sont dessinées pour l'occasion. Sur la TV, ce sont les icônes officielles des applis.
 
 ## Installation (PC Windows)
 
@@ -73,11 +87,11 @@ Une autre IP ? `.\install -Ip 192.168.1.xx`, ou la variable `TELECODING_TV_IP`. 
 ## Développement
 
 ```
-app/              appli Tizen (config.xml, index.html, css/, js/)
+app/              appli Tizen (config.xml, index.html, css/, js/, fonts/)
   js/platform.js  API Tizen, avec simulation automatique dans un navigateur
   js/store.js     préférences (localStorage)
   js/focus.js     navigation spatiale à la télécommande
-  js/ui.js        éléments d'interface
+  js/ui.js        cartes, couleurs des icônes, halo
   js/app.js       écran d'accueil, menus, paramètres, touches
 scripts/          find-tv, deploy, restore-original-home (PowerShell)
 tests/            test de l'interface au clavier (Playwright)
@@ -91,5 +105,5 @@ npm install && npm test
 
 ### État des tests
 
-- ✅ **Interface, dans Chromium avec API simulées** : 57 vérifications (navigation, lancement, HDMI, favoris, réorganisation, paramètres, persistance, aucune erreur JS).
+- ✅ **Interface, dans Chromium avec API simulées** : 69 vérifications (navigation, halo, titre, lancement, menu des entrées, HDMI, favoris, masquage, paramètres, persistance, migration, aucune erreur JS).
 - ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).

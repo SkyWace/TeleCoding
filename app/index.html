@@ -6,32 +6,44 @@
     <title>TeleCoding</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-theme="noir" data-anim="subtle" data-wallpaper="none">
+<body data-theme="ambiance" data-anim="subtle" data-wallpaper="none">
+    <div id="ambient"><div class="glow"></div><div class="glow"></div></div>
     <div id="wallpaper"></div>
 
     <div id="app">
-        <header class="top">
-            <div class="clock">
-                <div id="time" class="time">--:--</div>
-                <div class="meta">
-                    <span id="date"></span>
-                    <span id="weather" hidden></span>
-                </div>
+        <div id="page" data-scroll="y">
+            <div class="first" data-scroll-anchor>
+                <header class="top">
+                    <div class="clock">
+                        <div id="greeting" class="greeting"></div>
+                        <div class="clock-row">
+                            <div id="time" class="time">--:--</div>
+                            <div class="when">
+                                <span id="date"></span>
+                                <span id="weather" hidden></span>
+                            </div>
+                        </div>
+                    </div>
+                    <nav class="pills">
+                        <button class="pill focusable" data-action="inputs" data-row="header">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v6l-1.5 2v6.5a1.5 1.5 0 0 1-1.5 1.5h-4a1.5 1.5 0 0 1-1.5-1.5V11L7 9z"/><path class="cut" d="M9.5 5h1.2v2.2H9.5zM13.3 5h1.2v2.2h-1.2z"/></svg>
+                            <span>Entrées</span>
+                        </button>
+                        <button class="pill focusable" data-action="network" data-row="header">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zM6.3 13.6l1.6 1.6a5.8 5.8 0 0 1 8.2 0l1.6-1.6a8.1 8.1 0 0 0-11.4 0zM3 10.3l1.6 1.6a10.5 10.5 0 0 1 14.8 0l1.6-1.6a12.8 12.8 0 0 0-18 0z"/></svg>
+                            <span id="net-label">Wi-Fi</span>
+                        </button>
+                        <button class="pill focusable" data-action="settings" data-row="header">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.1 12.9a7 7 0 0 0 0-1.8l2-1.5-2-3.4-2.3.9a7 7 0 0 0-1.6-.9L14.9 3.8h-3.8l-.3 2.4a7 7 0 0 0-1.6.9l-2.3-.9-2 3.4 2 1.5a7 7 0 0 0 0 1.8l-2 1.5 2 3.4 2.3-.9c.5.4 1 .7 1.6.9l.3 2.4h3.8l.3-2.4c.6-.2 1.1-.5 1.6-.9l2.3.9 2-3.4zM13 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" transform="translate(-1 0)"/></svg>
+                            <span>Paramètres</span>
+                        </button>
+                    </nav>
+                </header>
+                <h1 id="hero" class="hero"></h1>
+                <div id="dock"></div>
             </div>
-            <nav class="actions">
-                <button class="pill focusable" data-action="options" data-row="header">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                    <span>Options</span>
-                </button>
-                <button class="pill focusable" data-action="settings" data-row="header">
-                    <svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11M18 7h3M3 17h5M12 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
-                    <span>Paramètres</span>
-                </button>
-            </nav>
-        </header>
-
-        <main id="sections" data-scroll="y"></main>
-
+            <main id="sections"></main>
+        </div>
         <div id="preview-badge" hidden>Aperçu navigateur · données simulées</div>
     </div>
 

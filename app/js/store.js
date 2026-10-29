@@ -9,16 +9,20 @@
     var SECTIONS = ['favorites', 'inputs', 'apps'];
 
     var DEFAULTS = {
-        theme: 'noir',
+        theme: 'ambiance',
+        designVersion: 3,
         wallpaper: 'none',
         wallpaperUrl: '',
         clock24: true,
+        showGreeting: true,
         showDate: true,
         showWeather: false,
         weatherCity: '',
         weatherLat: null,
         weatherLon: null,
         animations: 'subtle',
+        cols: 4,
+        showInputsRow: false,
         sections: SECTIONS.slice(),
         favorites: null, // null = premier lancement, rempli avec les applis détectées
         favoritesVersion: 0, // < 2 : favoris choisis avant le tri des applis système, à refaire
@@ -41,7 +45,9 @@
             return SECTIONS.indexOf(x) >= 0 && a.indexOf(x) === i;
         }) : [];
         SECTIONS.forEach(function (x) { if (secs.indexOf(x) < 0) secs.push(x); });
-        out.sections = secs;
+        // Les favoris (la bande) restent toujours en premier.
+        out.sections = ['favorites'].concat(secs.filter(function (x) { return x !== 'favorites'; }));
+        if ([4, 5, 6].indexOf(out.cols) < 0) out.cols = 4;
         if (out.favorites !== null && !Array.isArray(out.favorites)) out.favorites = null;
         if (!Array.isArray(out.hiddenApps)) out.hiddenApps = [];
         return out;
@@ -50,7 +56,10 @@
     function load() {
         try {
             var raw = global.localStorage.getItem(KEY);
-            return sanitize(raw ? JSON.parse(raw) : {});
+            var saved = raw ? JSON.parse(raw) : {};
+            // Réglages d'avant le nouveau design : on passe au thème « Ambiance ».
+            if (raw && !saved.designVersion) { saved.theme = 'ambiance'; saved.designVersion = 3; }
+            return sanitize(saved);
         } catch (e) {
             return clone(DEFAULTS);
         }

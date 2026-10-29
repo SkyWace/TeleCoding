@@ -1,7 +1,7 @@
 /*
  * TeleCoding : écran d'accueil.
  * Modèle = TC.store (préférences) + état en mémoire (applis, entrées).
- * Vue = rendu DOM des sections ; contrôleur = gestion des touches.
+ * Vue = en-tête, grand titre, bande des favoris, rangées dessous ; contrôleur = touches.
  */
 (function (global) {
     'use strict';
@@ -20,18 +20,19 @@
         inputsError: null,
         moving: null,      // id de l'appli en cours de déplacement
         watching: null,    // entrée affichée en plein écran
-        overlay: null,     // { onKey, close }
+        overlay: null,     // fenêtre ouverte
         weather: null
     };
 
     var LONG_PRESS_MS = 650;
 
     var THEMES = [
+        { id: 'ambiance', label: 'Ambiance (couleur de l’appli)' },
+        { id: 'minuit', label: 'Minuit', glow: [48, 86, 190] },
+        { id: 'ambre', label: 'Ambre', glow: [190, 104, 36] },
+        { id: 'emeraude', label: 'Émeraude', glow: [20, 140, 120] },
         { id: 'noir', label: 'Noir profond' },
-        { id: 'oled', label: 'Noir OLED' },
-        { id: 'graphite', label: 'Graphite' },
-        { id: 'minuit', label: 'Minuit' },
-        { id: 'ambre', label: 'Ambre' }
+        { id: 'oled', label: 'Noir OLED' }
     ];
     var WALLPAPERS = [
         { id: 'none', label: 'Aucun' },
@@ -45,7 +46,18 @@
         { id: 'subtle', label: 'Discrètes' },
         { id: 'normal', label: 'Normales' }
     ];
-    var SECTION_LABELS = { favorites: 'Favoris', inputs: 'Entrées', apps: 'Toutes les applications' };
+    var COLS = [{ id: 4, label: '4' }, { id: 5, label: '5' }, { id: 6, label: '6' }];
+
+    var ICONS = {
+        hdmi: '<svg viewBox="0 0 24 24"><path d="M7 3h10v6l-1.5 2v6.5a1.5 1.5 0 0 1-1.5 1.5h-4a1.5 1.5 0 0 1-1.5-1.5V11L7 9z"/></svg>',
+        tv: '<svg viewBox="0 0 24 24"><path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm1 2v8h14V8zM8 2.5l4 3 4-3 .9 1.2L13.2 6h-2.4L7.1 3.7zM8 20h8v1.5H8z"/></svg>',
+        av: '<svg viewBox="0 0 24 24"><path d="M5 3h2v6h1.5v4H7v8H5v-8H3.5V9H5zm6 0h2v10h1.5v4H13v4h-2v-4H9.5v-4H11zm6 0h2v4h1.5v4H19v10h-2V11h-1.5V7H17z"/></svg>'
+    };
+
+    function themeOf(id) {
+        for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return THEMES[i];
+        return THEMES[0];
+    }
 
     /* ------------------------------------------------------------------ */
     /* Apparence                                                           */
@@ -55,31 +67,33 @@
         doc.body.setAttribute('data-theme', s.theme);
         doc.body.setAttribute('data-anim', s.animations);
         doc.body.setAttribute('data-wallpaper', s.wallpaper);
+        doc.body.style.setProperty('--cols', s.cols);
         var wp = doc.getElementById('wallpaper');
         wp.style.backgroundImage = s.wallpaper === 'custom' && s.wallpaperUrl
             ? 'url("' + s.wallpaperUrl.replace(/"/g, '%22') + '")' : '';
         doc.getElementById('date').hidden = !s.showDate;
+        doc.getElementById('greeting').hidden = !s.showGreeting;
+        var fixed = themeOf(s.theme).glow;
+        if (fixed) TC.ui.ambient.set(fixed);
+        else if (TC.focus.current) onFocus(TC.focus.current);
         renderWeather();
         tick();
     }
 
     /* ------------------------------------------------------------------ */
-    /* Horloge, date, météo                                                */
+    /* Horloge, date, météo, réseau                                        */
     /* ------------------------------------------------------------------ */
     function tick() {
         var s = store.get();
         var now = new Date();
         var hh = now.getHours();
         var mm = ('0' + now.getMinutes()).slice(-2);
-        var time;
-        if (s.clock24) {
-            time = ('0' + hh).slice(-2) + ':' + mm;
-        } else {
-            time = ((hh % 12) || 12) + ':' + mm + '<small>' + (hh < 12 ? 'AM' : 'PM') + '</small>';
-        }
-        doc.getElementById('time').innerHTML = time;
-        var date = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-        doc.getElementById('date').textContent = date.charAt(0).toUpperCase() + date.slice(1);
+        doc.getElementById('greeting').textContent = hh >= 5 && hh < 18 ? 'Bonjour' : 'Bonsoir';
+        doc.getElementById('time').innerHTML = s.clock24
+            ? ('0' + hh).slice(-2) + ':' + mm
+            : ((hh % 12) || 12) + ':' + mm + '<small>' + (hh < 12 ? 'AM' : 'PM') + '</small>';
+        doc.getElementById('date').textContent =
+            now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     }
 
     function scheduleClock() {
@@ -122,6 +136,14 @@
             if (!hit) throw new Error('Ville introuvable');
             return { name: hit.name, lat: hit.latitude, lon: hit.longitude };
         });
+    }
+
+    var NETWORK_LABELS = { WIFI: 'Wi-Fi', ETHERNET: 'Ethernet', NONE: 'Hors ligne' };
+    function refreshNetwork() {
+        platform.networkType().then(function (t) {
+            state.network = t;
+            doc.getElementById('net-label').textContent = NETWORK_LABELS[t] || 'Réseau';
+        }).catch(function () { /* on garde « Wi-Fi » */ });
     }
 
     /* ------------------------------------------------------------------ */
@@ -182,101 +204,125 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Rendu de la page principale                                         */
+    /* Rendu                                                               */
     /* ------------------------------------------------------------------ */
-    function appTile(app, row) {
-        var fav = isFavorite(app.id);
+    function appTile(app, row, showFav) {
         return h('button', {
             class: 'tile focusable' + (state.moving === app.id ? ' moving' : ''),
             'data-row': row,
-            'data-app': app.id,
-            'data-kind': 'app'
+            'data-app': app.id
         }, [
             TC.ui.appArt(app),
-            h('span', { class: 'name', text: app.name }),
-            row === 'apps' && fav ? h('span', { class: 'star', title: 'Favori' }) : null
+            showFav && isFavorite(app.id) ? h('span', { class: 'fav-dot' }) : null
         ]);
     }
+
+    function inputIcon(type) { return type === 'HDMI' || type === 'DVI' ? ICONS.hdmi : type === 'TV' ? ICONS.tv : ICONS.av; }
 
     function inputTile(src) {
         return h('button', {
-            class: 'tile input focusable' + (src.connected ? '' : ' off'),
+            class: 'tile input focusable' + (src.connected ? ' on' : ''),
             'data-row': 'inputs',
-            'data-input': src.key,
-            'data-kind': 'input'
+            'data-input': src.key
         }, [
-            h('div', { class: 'art' }, [h('span', { class: 'port', text: src.label })]),
-            h('span', { class: 'name', text: src.connected ? 'Connecté' : 'Non connecté' })
+            h('div', { class: 'art' }, [
+                h('span', { html: inputIcon(src.type) }),
+                h('span', { class: 'port', text: src.label }),
+                h('span', { class: 'state', text: src.connected ? 'Connecté' : 'Non connecté' })
+            ])
         ]);
     }
 
-    function actionTile(row, label, action) {
-        return h('button', { class: 'tile ghost focusable', 'data-row': row, 'data-action': action }, [
-            h('div', { class: 'art' }, [h('span', { class: 'plus', text: '+' })]),
-            h('span', { class: 'name', text: label })
-        ]);
-    }
-
-    function section(id, title, count, tiles, note) {
-        return h('section', { class: 'section', 'data-section': id, 'data-scroll-anchor': true }, [
-            h('h2', {}, [title, count !== null ? h('span', { class: 'count', text: String(count) }) : null]),
-            h('div', { class: 'track', 'data-scroll': 'x' }, tiles),
-            note ? h('p', { class: 'note', text: note }) : null
-        ]);
-    }
-
-    function renderSection(id) {
-        if (id === 'favorites') {
-            var favs = favorites();
-            var tiles = favs.map(function (a) { return appTile(a, 'favorites'); });
-            if (!state.moving) tiles.push(actionTile('favorites', favs.length ? 'Gérer' : 'Ajouter des favoris', 'manage-favorites'));
-            return section('favorites', 'Favoris', null, tiles,
-                state.moving ? '◀ ▶ pour déplacer · OK pour valider' : null);
-        }
-        if (id === 'inputs') {
-            if (state.inputsError) {
-                return section('inputs', 'Entrées', null, [
-                    h('button', { class: 'tile wide ghost focusable', 'data-row': 'inputs', 'data-action': 'inputs-help' }, [
-                        h('div', { class: 'art' }, [h('span', { class: 'port', text: 'SOURCE' })]),
-                        h('span', { class: 'name', text: 'Changement d’entrée indisponible ici' })
-                    ])
-                ]);
-            }
-            return section('inputs', 'Entrées', null, state.inputs.map(inputTile));
-        }
-        var all = visibleApps();
-        var apps = all.map(function (a) { return appTile(a, 'apps'); });
-        if (!apps.length && state.appsLoaded) {
-            apps.push(h('button', { class: 'tile wide ghost focusable', 'data-row': 'apps', 'data-action': 'refresh' }, [
-                h('div', { class: 'art' }, [h('span', { class: 'port', text: '↻' })]),
-                h('span', { class: 'name', text: 'Aucune application détectée · Actualiser' })
+    function renderDock() {
+        var dock = doc.getElementById('dock');
+        var track = dock.querySelector('.track');
+        var scroll = track ? track.scrollLeft : 0;
+        var favs = favorites();
+        var tiles = favs.map(function (a) { return appTile(a, 'favorites', false); });
+        if (!state.moving) {
+            tiles.push(h('button', { class: 'tile ghost focusable', 'data-row': 'favorites', 'data-action': 'manage-favorites' }, [
+                h('div', { class: 'art' }, [
+                    h('span', { class: 'plus', text: '+' }),
+                    h('span', { class: 'hint-text', text: favs.length ? 'Gérer les favoris' : 'Ajouter des favoris' })
+                ])
             ]));
         }
-        return section('apps', 'Toutes les applications', all.length, apps);
+        dock.innerHTML = '';
+        var newTrack = h('div', { class: 'track', 'data-scroll': 'x' }, tiles);
+        dock.appendChild(h('div', { class: 'band' }, [newTrack]));
+        if (state.moving) dock.appendChild(h('p', { class: 'note', text: '◀ ▶ pour déplacer · OK pour valider' }));
+        newTrack.scrollLeft = scroll;
+    }
+
+    function renderSections() {
+        var s = store.get();
+        var main = doc.getElementById('sections');
+        main.innerHTML = '';
+        s.sections.forEach(function (id) {
+            if (id === 'inputs' && s.showInputsRow) {
+                var tiles = state.inputs.map(inputTile);
+                if (state.inputsError) {
+                    tiles = [h('button', { class: 'tile ghost focusable', 'data-row': 'inputs', 'data-action': 'inputs-help' }, [
+                        h('div', { class: 'art' }, [h('span', { class: 'hint-text', text: 'Entrées indisponibles · touche SOURCE' })])
+                    ])];
+                }
+                main.appendChild(h('section', { class: 'row-section', 'data-section': 'inputs' }, [
+                    h('h2', { text: 'Entrées' }),
+                    h('div', { class: 'grid' }, tiles)
+                ]));
+            }
+            if (id === 'apps') {
+                var all = visibleApps();
+                var grid = all.map(function (a, i) { return appTile(a, 'apps-' + Math.floor(i / s.cols), true); });
+                if (!all.length && state.appsLoaded) {
+                    grid.push(h('button', { class: 'tile ghost focusable', 'data-row': 'apps-0', 'data-action': 'refresh' }, [
+                        h('div', { class: 'art' }, [h('span', { class: 'plus', text: '↻' }), h('span', { class: 'hint-text', text: 'Aucune appli détectée · Actualiser' })])
+                    ]));
+                }
+                main.appendChild(h('section', { class: 'row-section', 'data-section': 'apps' }, [
+                    h('h2', {}, ['Toutes les applications', h('span', { class: 'count', text: String(all.length) })]),
+                    h('div', { class: 'grid' }, grid)
+                ]));
+            }
+        });
     }
 
     function focusKey(el) {
         if (!el) return null;
         if (el.getAttribute('data-app')) return '[data-row="' + el.getAttribute('data-row') + '"][data-app="' + el.getAttribute('data-app') + '"]';
         if (el.getAttribute('data-input')) return '[data-input="' + el.getAttribute('data-input') + '"]';
-        if (el.getAttribute('data-action')) return '[data-row="' + el.getAttribute('data-row') + '"][data-action="' + el.getAttribute('data-action') + '"]';
+        if (el.getAttribute('data-action')) return '[data-action="' + el.getAttribute('data-action') + '"]';
         return null;
     }
 
     function render(focusSelector) {
-        var main = doc.getElementById('sections');
         var keep = focusSelector || focusKey(TC.focus.current);
-        var scrolls = {};
-        Array.prototype.forEach.call(main.querySelectorAll('[data-section]'), function (s) {
-            scrolls[s.getAttribute('data-section')] = s.querySelector('.track').scrollLeft;
-        });
-        main.innerHTML = '';
-        store.get().sections.forEach(function (id) {
-            var sec = renderSection(id);
-            main.appendChild(sec);
-            if (scrolls[id]) sec.querySelector('.track').scrollLeft = scrolls[id];
-        });
+        renderDock();
+        renderSections();
         if (!state.overlay) TC.focus.restore(keep);
+    }
+
+    // Grand titre et halo suivent l'élément sélectionné.
+    var heroTimer = null;
+    function setHero(text) {
+        var el = doc.getElementById('hero');
+        if (el.textContent === text) return;
+        el.classList.add('swap');
+        clearTimeout(heroTimer);
+        heroTimer = setTimeout(function () { el.textContent = text; el.classList.remove('swap'); }, 90);
+    }
+
+    function onFocus(el) {
+        if (state.overlay) return;
+        var appId = el.getAttribute('data-app');
+        var app = appId ? appById(appId) : null;
+        if (app) {
+            setHero(app.name);
+            if (!themeOf(store.get().theme).glow) TC.ui.ambient.set(TC.ui.glowOf(app));
+            return;
+        }
+        var key = el.getAttribute('data-input');
+        if (key) { var src = inputByKey(key); if (src) setHero(src.label); }
     }
 
     /* ------------------------------------------------------------------ */
@@ -361,7 +407,10 @@
     function activate(el) {
         var action = el.getAttribute('data-action');
         if (action === 'settings') return openSettings();
-        if (action === 'options') return openOptions();
+        if (action === 'inputs') return openInputsMenu(el);
+        if (action === 'network') {
+            return TC.ui.toast(state.network === 'NONE' ? 'TV hors ligne' : 'Connectée en ' + (NETWORK_LABELS[state.network] || 'réseau'));
+        }
         if (action === 'manage-favorites') return openManageFavorites();
         if (action === 'inputs-help') return openInputsHelp();
         if (action === 'refresh') return refreshAll().then(function () { TC.ui.toast('Applications actualisées'); });
@@ -385,17 +434,14 @@
         opts = opts || {};
         var overlay = doc.getElementById('overlay');
         overlay.innerHTML = '';
+        overlay.className = opts.light ? 'light' : '';
         var panel = h('div', { class: 'panel ' + (opts.kind || 'dialog') });
         overlay.appendChild(panel);
         overlay.hidden = false;
-        var ctx = {
-            panel: panel,
-            onKey: opts.onKey || null,
-            close: function () { closeOverlay(); }
-        };
+        var ctx = { panel: panel };
         state.overlay = ctx;
         build(panel, ctx);
-        // Laisse le navigateur poser le panneau avant de calculer le focus.
+        // Laisse le navigateur poser le panneau avant l'animation d'ouverture.
         requestAnimationFrame(function () { overlay.classList.add('open'); });
         TC.focus.push(panel, panel.querySelector('[data-first]'));
         return ctx;
@@ -445,25 +491,53 @@
         return true;
     }
 
+    function reorderFavorites() {
+        var first = favorites()[0];
+        if (first) startMove(first.id); else TC.ui.toast('Aucun favori à réorganiser');
+    }
+
     function openOptions() {
         openMenu('Options', [
             ['Actualiser les applications', function () { closeOverlay(); refreshAll().then(function () { TC.ui.toast('Applications actualisées'); }); }],
-            ['Réorganiser les favoris', function () {
-                closeOverlay();
-                var first = favorites()[0];
-                if (first) startMove(first.id); else TC.ui.toast('Aucun favori à réorganiser');
-            }],
+            ['Réorganiser les favoris', function () { closeOverlay(); reorderFavorites(); }],
             ['Gérer les favoris', function () { closeOverlay(); openManageFavorites(); }],
             ['Paramètres', function () { closeOverlay(); openSettings(); }],
             ['Quitter TeleCoding', function () { closeOverlay(); platform.exit(); }]
         ]);
     }
 
+    // Menu déroulant sous la pastille « Entrées ».
+    function openInputsMenu(pill) {
+        var r = pill.getBoundingClientRect();
+        openOverlay(function (panel) {
+            panel.style.top = (r.bottom + 16) + 'px';
+            panel.style.left = r.left + 'px';
+            var list = h('div', { class: 'list', 'data-scroll': 'y' });
+            if (state.inputsError) {
+                list.appendChild(menuItem('Indisponible · utilise la touche SOURCE', function () { closeOverlay(); openInputsHelp(); }, true));
+            }
+            var lastType = null;
+            state.inputs.forEach(function (src, i) {
+                var group = src.type === 'HDMI' ? 'HDMI' : src.type;
+                if (lastType && group !== lastType) list.appendChild(h('div', { class: 'sep' }));
+                lastType = group;
+                var b = h('button', { class: 'item source focusable', 'data-first': i === 0 || null, 'data-source': src.key }, [
+                    h('span', { html: inputIcon(src.type) }),
+                    h('span', { class: 'grow', text: src.label }),
+                    src.connected ? h('span', { class: 'status', text: 'Connecté' }) : null
+                ]);
+                b._activate = function () { closeOverlay(); watch(src); };
+                list.appendChild(b);
+            });
+            panel.appendChild(list);
+        }, { kind: 'dropdown', light: true });
+    }
+
     function openInputsHelp() {
         openOverlay(function (panel) {
             panel.appendChild(h('h3', { text: 'Entrées HDMI' }));
             panel.appendChild(h('p', { class: 'text', text: 'Cette TV ne laisse pas TeleCoding lire la liste des entrées (' + state.inputsError + ').' }));
-            panel.appendChild(h('p', { class: 'text', text: 'Utilise la touche SOURCE de la télécommande (ou Accueil ▸ Sources) pour changer d’entrée.' }));
+            panel.appendChild(h('p', { class: 'text', text: 'Utilise la touche SOURCE de la télécommande pour changer d’entrée.' }));
             panel.appendChild(menuItem('Compris', closeOverlay, true));
         });
     }
@@ -494,7 +568,7 @@
 
     function choiceLabel(list, id) {
         for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i].label;
-        return id;
+        return String(id);
     }
 
     function cycle(list, id, delta) {
@@ -508,13 +582,12 @@
         openOverlay(function (panel) {
             panel.appendChild(h('h3', { text: title }));
             var input = h('input', { type: 'text', class: 'field focusable', value: value || '', placeholder: placeholder, 'data-first': true });
-            function submit() {
+            input._submit = function () {
                 if (done) return;
                 done = true;
                 closeOverlay();
                 onSubmit(input.value.trim());
-            }
-            input._submit = submit;
+            };
             panel.appendChild(input);
             panel.appendChild(h('p', { class: 'text', text: 'OK pour valider · Retour pour annuler' }));
         });
@@ -575,11 +648,17 @@
                     }
                 }));
             }
+            list.appendChild(row('Applis par rangée', choiceLabel(COLS, s.cols), {
+                cycle: function (d) { set({ cols: cycle(COLS, s.cols, d) }); render(); }
+            }));
             list.appendChild(row('Animations', choiceLabel(ANIMATIONS, s.animations), {
                 cycle: function (d) { set({ animations: cycle(ANIMATIONS, s.animations, d) }); }
             }));
 
             list.appendChild(h('div', { class: 'group', text: 'En-tête' }));
+            list.appendChild(row('Salutation', s.showGreeting ? 'Oui' : 'Non', {
+                cycle: function () { set({ showGreeting: !s.showGreeting }); }
+            }));
             list.appendChild(row('Format de l’heure', s.clock24 ? '24 h' : '12 h', {
                 cycle: function () { set({ clock24: !s.clock24 }); }
             }));
@@ -587,10 +666,7 @@
                 cycle: function () { set({ showDate: !s.showDate }); }
             }));
             list.appendChild(row('Afficher la météo', s.showWeather ? 'Oui' : 'Non', {
-                cycle: function () {
-                    set({ showWeather: !s.showWeather });
-                    refreshWeather();
-                }
+                cycle: function () { set({ showWeather: !s.showWeather }); refreshWeather(); }
             }));
             if (s.showWeather) {
                 list.appendChild(row('Ville (météo)', s.weatherCity || 'À définir', {
@@ -613,6 +689,21 @@
             list.appendChild(row('Gérer les favoris', (s.favorites || []).length + ' favori(s)', {
                 activate: function () { closeOverlay(); openManageFavorites(); }
             }));
+            list.appendChild(row('Réorganiser les favoris', '', {
+                activate: function () { closeOverlay(); reorderFavorites(); }
+            }));
+            list.appendChild(row('Rangée Entrées', s.showInputsRow ? 'Affichée' : 'Menu seulement', {
+                cycle: function () { set({ showInputsRow: !s.showInputsRow }); render(); }
+            }));
+            if (s.showInputsRow) {
+                var inputsFirst = s.sections.indexOf('inputs') < s.sections.indexOf('apps');
+                list.appendChild(row('Ordre des rangées', inputsFirst ? 'Entrées, puis applis' : 'Applis, puis entrées', {
+                    cycle: function () {
+                        set({ sections: inputsFirst ? ['favorites', 'apps', 'inputs'] : ['favorites', 'inputs', 'apps'] });
+                        render();
+                    }
+                }));
+            }
             list.appendChild(row('Applis système', s.showSystemApps ? 'Affichées' : 'Masquées', {
                 cycle: function () { set({ showSystemApps: !s.showSystemApps }); render(); }
             }));
@@ -624,32 +715,19 @@
                     TC.ui.toast('Toutes les applis sont réaffichées');
                 }
             }));
-            s.sections.forEach(function (id, i) {
-                var b = row('Section ' + (i + 1), SECTION_LABELS[id], {
-                    activate: function () {
-                        var secs = s.sections.slice();
-                        // OK : la section monte d'un cran (la première passe en dernier).
-                        var to = i === 0 ? secs.length - 1 : i - 1;
-                        secs.splice(i, 1);
-                        secs.splice(to, 0, id);
-                        store.set({ sections: secs });
-                        render();
-                        var list2 = ctx.panel.querySelector('.list');
-                        list2.innerHTML = '';
-                        build(list2);
-                        TC.focus.set(list2.querySelector('[data-setting="Section ' + (to + 1) + '"]'));
-                    }
-                });
-                b.appendChild(h('span', { class: 'hint', text: 'OK : monter' }));
-                list.appendChild(b);
-            });
 
             list.appendChild(h('div', { class: 'group', text: 'Système' }));
+            list.appendChild(row('Actualiser les applications', '', {
+                activate: function () { refreshAll().then(function () { TC.ui.toast('Applications actualisées'); }); }
+            }));
             list.appendChild(row('Réinitialiser l’apparence', '', {
-                activate: function () { store.reset(); rebuild(); TC.ui.toast('Apparence réinitialisée (favoris conservés)'); }
+                activate: function () { store.reset(); rebuild(); render(); TC.ui.toast('Apparence réinitialisée (favoris conservés)'); }
+            }));
+            list.appendChild(row('Quitter TeleCoding', '', {
+                activate: function () { platform.exit(); }
             }));
             list.appendChild(h('p', { class: 'text small', text:
-                'TeleCoding 1.0 · Sur Samsung (Tizen), la touche HOME ouvre toujours le Smart Hub : ' +
+                'TeleCoding 2.0 · Sur Samsung (Tizen), la touche HOME ouvre toujours le Smart Hub : ' +
                 'c’est imposé par le système. Pour que TeleCoding s’ouvre au démarrage, active ' +
                 '« Exécution auto. de la dernière appli » dans les réglages de la TV.' }));
         }
@@ -673,7 +751,7 @@
         // Champ de saisie : on laisse le clavier virtuel travailler.
         if (el && el.tagName === 'INPUT') {
             if (code === K.ENTER || code === K.IME_DONE) { e.preventDefault(); if (el._submit) el._submit(); return; }
-            if (isBack(code) && code !== 8 || code === K.IME_CANCEL) { e.preventDefault(); closeOverlay(); return; }
+            if ((isBack(code) && code !== 8) || code === K.IME_CANCEL) { e.preventDefault(); closeOverlay(); return; }
             if (code !== K.UP && code !== K.DOWN) return;
         }
 
@@ -704,7 +782,7 @@
             if (e.repeat || !el) return;
             if (state.moving) { endMove(); return; }
             if (press) { clearTimeout(press.timer); press = null; }
-            // Appui long sur une tuile d'appli = menu d'options.
+            // Appui long sur une carte d'appli = menu d'options.
             press = { el: el, long: false, timer: null };
             if (!state.overlay && el.getAttribute('data-app')) {
                 press.timer = setTimeout(function () {
@@ -720,8 +798,8 @@
             e.preventDefault();
             if (state.moving) { endMove(); return; }
             if (state.overlay) { closeOverlay(); return; }
-            // Sur l'accueil, Retour ramène simplement au début.
-            var first = doc.querySelector('#sections .focusable');
+            // Sur l'accueil, Retour ramène simplement au premier favori.
+            var first = doc.querySelector('#dock .focusable');
             if (first) TC.focus.set(first);
             return;
         }
@@ -762,22 +840,31 @@
             TC.focus.set(el);
             if (el._activate) el._activate(); else if (!state.overlay) activate(el);
         });
+        TC.focus.onChange(onFocus);
+        // Les couleurs d'une icône arrivent quand elle est chargée : on rafraîchit le halo.
+        TC.ui.colorReady = function (id) {
+            var el = TC.focus.current;
+            if (el && el.getAttribute('data-app') === id) onFocus(el);
+        };
         store.onChange(function (s, patch) {
             if ('theme' in patch || 'animations' in patch || 'wallpaper' in patch || 'wallpaperUrl' in patch ||
-                'showDate' in patch || 'clock24' in patch || 'showWeather' in patch) applyLook();
+                'showDate' in patch || 'clock24' in patch || 'showWeather' in patch || 'showGreeting' in patch ||
+                'cols' in patch) applyLook();
         });
         doc.addEventListener('visibilitychange', function () {
             if (doc.hidden) return;
             tick();
             refreshAll();
             refreshWeather();
+            refreshNetwork();
         });
 
         applyLook();
         scheduleClock();
+        refreshNetwork();
         TC.focus.push(doc.getElementById('app'));
         refreshAll().then(function () {
-            var first = doc.querySelector('#sections .focusable');
+            var first = doc.querySelector('#dock .focusable');
             if (first) TC.focus.set(first);
             doc.body.classList.add('ready');
         });

@@ -174,6 +174,13 @@
             return promisify(function (ok, ko) { tz.tvwindow.hide(ok, ko, 'MAIN'); });
         },
 
+        // 'WIFI', 'ETHERNET', 'NONE'…
+        networkType: function () {
+            if (!tz.systeminfo) return Promise.reject(new Error('systeminfo absent'));
+            return promisify(function (ok, ko) { tz.systeminfo.getPropertyValue('NETWORK', ok, ko); })
+                .then(function (n) { return n.networkType; });
+        },
+
         registerKeys: function () {
             var input = tz.tvinputdevice;
             if (!input) return;
@@ -208,6 +215,29 @@
         ['com.samsung.tv.adplayer', 'AdPlayer'], ['com.samsung.tv.targeted-ad-service', 'Targeted Advertisment Service'],
         ['25emanual2.emanual', 'User Guide'], ['w2VwCK465D.OTApp', 'Samsung TV Plus Privacy Settings']
     ];
+    // Icônes d'aperçu dessinées à la volée (couleurs de marque approximatives), pour juger le rendu.
+    var MOCK_ICONS = {
+        'org.tizen.netflix-app': ['#000000', '#e50914', 'NETFLIX'],
+        'org.tizen.primevideo': ['#0f79ff', '#ffffff', 'prime video'],
+        '9Ur5IzDKqV.TizenYouTube': ['#f4f4f4', '#ff0000', '▶ YouTube'],
+        'MCmYXNxgcu.DisneyPlus': ['#0b3a5e', '#ffffff', 'Disney+'],
+        'rJeHak5zRg.Spotify': ['#121212', '#1ed760', 'Spotify'],
+        'aLlph042JZ.arte': ['#fa481c', '#ffffff', 'arte'],
+        'Ol7HVEXtqh.6play': ['#222222', '#f2e600', '6play'],
+        'E0P3lRI4H7.MYTF1': ['#0c2fb3', '#ffffff', 'TF1+']
+    };
+    function mockIcon(id) {
+        var m = MOCK_ICONS[id];
+        if (!m || !global.document) return '';
+        var c = global.document.createElement('canvas');
+        c.width = 512; c.height = 423;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = m[0]; ctx.fillRect(0, 0, 512, 423);
+        ctx.fillStyle = m[1]; ctx.font = 'bold 84px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(m[2], 256, 212, 440);
+        return c.toDataURL('image/png');
+    }
+
     var mockSources = {
         connected: [{ type: 'HDMI', number: 1 }, { type: 'HDMI', number: 3 }, { type: 'TV', number: 1 }],
         disconnected: [{ type: 'HDMI', number: 2 }]
@@ -220,7 +250,7 @@
 
         listApps: function () {
             return Promise.resolve(sortByName(dedupeByName(MOCK_APPS.map(function (m) {
-                return { id: m[0], name: cleanName(m[1]), icon: '', system: !isUserApp(m[0]) };
+                return { id: m[0], name: cleanName(m[1]), icon: mockIcon(m[0]), system: !isUserApp(m[0]) };
             }))));
         },
         launchApp: function (id) {
@@ -238,6 +268,7 @@
             this.watching = null;
             return Promise.resolve();
         },
+        networkType: function () { return Promise.resolve(global.navigator.onLine === false ? 'NONE' : 'WIFI'); },
         registerKeys: function () { /* le clavier du PC suffit */ },
         exit: function () { /* rien à fermer dans un navigateur */ }
     };
