@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/SkyWace/TeleCoding" version="1.0.0" viewmodes="maximized">
+    <tizen:application id="TlCdLaunch.TeleCoding" package="TlCdLaunch" required_version="6.0"/>
+    <content src="index.html"/>
+    <feature name="http://tizen.org/feature/screen.size.all"/>
+    <icon src="icon.png"/>
+    <name>TeleCoding</name>
+    <description>Accueil personnel, sans publicité, pilotable à la télécommande.</description>
+    <author href="https://github.com/SkyWace">SkyWace</author>
+
+    <!-- Lister et lancer les applications installées -->
+    <tizen:privilege name="http://tizen.org/privilege/application.info"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    <!-- Afficher une entrée HDMI dans l'appli (TVWindow) -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.window"/>
+    <!-- Touches couleur / Menu / Tools de la télécommande -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <!-- Météo (optionnelle, désactivée par défaut) -->
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+
+    <access origin="https://api.open-meteo.com" subdomains="false"/>
+    <access origin="https://geocoding-api.open-meteo.com" subdomains="false"/>
+
+    <tizen:profile name="tv-samsung"/>
+    <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

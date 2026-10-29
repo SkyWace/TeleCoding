@@ -1,0 +1,5 @@
+dist/
+scripts/.state.json
+node_modules/
+.buildResult/
+*.wgt

@@ -1,0 +1,13 @@
+{
+  "name": "telecoding",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Accueil personnel pour TV Samsung (Tizen)",
+  "scripts": {
+    "test": "node tests/smoke.test.js",
+    "screenshots": "node tests/smoke.test.js --screenshots"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

@@ -1,0 +1,93 @@
+# TeleCoding
+
+Un écran d'accueil personnel pour ma TV **Samsung UE43CU7025** : fond noir, sans publicité, sans abonnement, sans serveur. On y trouve mes applications et mes entrées HDMI, et tout se pilote à la télécommande.
+
+![Accueil TeleCoding](docs/accueil.png)
+
+## Ce qu'il faut savoir sur cette TV
+
+La CU7025 tourne sous **Tizen** (le système de Samsung), pas sous Android TV. Ça change la donne :
+
+| Fonction | Possible ? | Comment |
+|---|---|---|
+| Appli personnelle sans pub | ✅ | Appli web Tizen (`.wgt`) installée en mode développeur |
+| Détecter les applis installées | ✅ | `tizen.application.getAppsInfo()`, rien n'est codé en dur |
+| Lancer une appli | ✅ | `tizen.application.launch()` |
+| Entrées HDMI | ✅ (dans l'appli) | `tizen.tvwindow.setSource()` : l'entrée s'affiche en plein écran *dans* TeleCoding, et Retour ramène à l'accueil |
+| Remplacer le Smart Hub / la touche HOME | ❌ | Impossible sur Tizen pour une appli tierce. HOME ouvre toujours le Smart Hub |
+| Ouvrir TeleCoding à l'allumage | ⚠️ | Réglage Samsung « Exécution auto. de la dernière appli », à activer soi-même |
+
+Limites connues de l'affichage HDMI dans l'appli : tant que TeleCoding affiche l'entrée, les flèches et OK restent captées par l'appli, donc le pilotage Anynet+ (HDMI-CEC) de l'appareil branché ne passe pas. Pour piloter une console ou une box avec la télécommande de la TV, utilise la touche **SOURCE**.
+
+## Navigation à la télécommande
+
+| Touche | Action |
+|---|---|
+| ◀ ▶ ▲ ▼ | Se déplacer (le focus est toujours visible ; une rangée retient sa dernière position) |
+| OK | Ouvrir l'appli / l'entrée, ou valider |
+| OK maintenu | Options de l'appli : favoris, déplacer |
+| Retour | Fermer une fenêtre, quitter l'entrée HDMI, revenir au début |
+| Menu / Tools / Jaune | Options de l'élément sélectionné |
+| Bleu | Paramètres |
+| HOME | Smart Hub Samsung (imposé par le système) |
+
+## Paramètres (enregistrés sur la TV)
+
+Thème (Noir profond, Noir OLED, Graphite, Minuit, Ambre), fond d'écran (dégradés ou image par URL), animations (désactivées, discrètes, normales), heure 12 h / 24 h, date, météo (désactivée par défaut), favoris, ordre des sections.
+
+![Paramètres](docs/parametres.png)
+
+La météo est la seule fonction qui sort sur Internet. Elle interroge l'API gratuite [Open-Meteo](https://open-meteo.com), sans compte ni clé, et seulement si tu l'actives.
+
+## Installation (PC Windows)
+
+Prérequis, déjà en place : Tizen Studio dans `C:\tizen-studio`, TV en mode développeur avec l'IP du PC (`192.168.1.119`), TV en `192.168.1.129`.
+
+1. **Trouver la TV et vérifier le mode développeur**
+   ```bat
+   find-tv
+   ```
+2. **Certificat Samsung** (une seule fois) : Tizen Studio → *Tools → Certificate Manager* → **+** → *Samsung* → *TV*, puis connexion au compte Samsung. Ajoute le **DUID** de la TV, que `install` affiche à l'étape 2. Donne au profil un nom, par exemple `TeleCoding`.
+3. **Compiler, signer, installer, lancer, vérifier**
+   ```bat
+   install -Profile TeleCoding
+   ```
+4. **Démarrage automatique** (manuel, aucun script ne touche aux réglages de la TV) : *Réglages → Général et confidentialité → Options d'écran de démarrage →* « Exécution auto. de la dernière appli ». Ensuite, éteins la TV pendant que TeleCoding est ouvert.
+
+Une autre IP ? `install -Ip 192.168.1.xx`, ou la variable `TELECODING_TV_IP`. Tizen Studio ailleurs ? Variable `TIZEN_HOME`.
+
+## Revenir à l'état d'origine : `restore-original-home`
+
+```bat
+restore-original-home
+```
+(depuis PowerShell : `.\restore-original-home`)
+
+- TeleCoding n'a **jamais** modifié, désactivé ni supprimé le Smart Hub ou une appli Samsung. L'accueil d'origine est intact.
+- Le script désinstalle TeleCoding après confirmation. Avec `-KeepApp`, il le garde. Avec `-Yes`, il ne pose pas de questions.
+- Il rappelle les réglages TV à remettre : l'exécution automatique de la dernière appli et, si tu veux, le mode développeur.
+- Si la TV est injoignable, il donne la marche à suivre à la main : *Applis → roue dentée → TeleCoding → Supprimer*.
+
+## Développement
+
+```
+app/              appli Tizen (config.xml, index.html, css/, js/)
+  js/platform.js  API Tizen, avec simulation automatique dans un navigateur
+  js/store.js     préférences (localStorage)
+  js/focus.js     navigation spatiale à la télécommande
+  js/ui.js        éléments d'interface
+  js/app.js       écran d'accueil, menus, paramètres, touches
+scripts/          find-tv, deploy, restore-original-home (PowerShell)
+tests/            test de l'interface au clavier (Playwright)
+```
+
+Aperçu sur PC : ouvre `app/index.html` dans Chrome. Les flèches et Entrée font la télécommande, Échap fait Retour et M fait Menu. Les données sont simulées et signalées comme telles.
+
+```bash
+npm install && npm test
+```
+
+### État des tests
+
+- ✅ **Interface, dans Chromium avec API simulées** : 45 vérifications (navigation, lancement, HDMI, favoris, réorganisation, paramètres, persistance, aucune erreur JS).
+- ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).

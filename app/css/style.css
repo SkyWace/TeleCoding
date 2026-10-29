@@ -1,0 +1,277 @@
+/*
+ * TeleCoding — interface 1920×1080 (les TV 4K mettent à l'échelle).
+ * 1rem = 16 px à 1920 px de large : tout est exprimé en rem.
+ * Animations : uniquement transform / opacity (léger pour le GPU de la TV).
+ */
+
+html { font-size: calc(100vw / 120); }
+
+body {
+    --bg: #080808;
+    --surface: #131313;
+    --surface-2: #1b1b1b;
+    --line: rgba(255, 255, 255, 0.07);
+    --text: #f2f2f2;
+    --muted: #8b8b8b;
+    --accent: #ffffff;
+    --dur: 170ms;
+    --scale: 1.07;
+    margin: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "SamsungOne", "Samsung Sans", "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    cursor: default;
+}
+
+body[data-theme="oled"] { --bg: #000; --surface: #0e0e0e; --surface-2: #161616; }
+body[data-theme="graphite"] { --bg: #111214; --surface: #1c1e22; --surface-2: #25282d; --muted: #9298a1; --accent: #e9ecf1; }
+body[data-theme="minuit"] { --bg: #070a12; --surface: #111726; --surface-2: #192136; --muted: #8590ab; --accent: #9dbbff; }
+body[data-theme="ambre"] { --bg: #0b0907; --surface: #18130e; --surface-2: #221b14; --muted: #a0907c; --accent: #f1b873; }
+
+body[data-anim="off"] { --dur: 0ms; --scale: 1.04; }
+body[data-anim="normal"] { --dur: 260ms; --scale: 1.1; }
+body[data-anim="off"] *, body[data-anim="off"] *::after { transition: none !important; animation: none !important; }
+
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; text-align: inherit; outline: none; cursor: pointer; }
+:focus { outline: none; }
+
+/* ---------- Fond d'écran ---------- */
+#wallpaper {
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    background-size: cover; background-position: center;
+    z-index: 0;
+}
+#wallpaper::after {
+    content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.8));
+    opacity: 0;
+}
+body[data-wallpaper="aurore"] #wallpaper {
+    background-image:
+        radial-gradient(60rem 30rem at 85% -10%, rgba(80, 140, 255, 0.16), transparent 70%),
+        radial-gradient(50rem 30rem at 10% 110%, rgba(40, 200, 170, 0.10), transparent 70%);
+}
+body[data-wallpaper="crepuscule"] #wallpaper {
+    background-image:
+        radial-gradient(70rem 35rem at 100% 0%, rgba(255, 120, 70, 0.14), transparent 70%),
+        radial-gradient(60rem 35rem at 0% 100%, rgba(170, 60, 160, 0.12), transparent 70%);
+}
+body[data-wallpaper="brume"] #wallpaper {
+    background-image: linear-gradient(160deg, rgba(255,255,255,0.05), transparent 45%, rgba(255,255,255,0.03));
+}
+body[data-wallpaper="custom"] #wallpaper::after { opacity: 1; }
+
+/* ---------- Mise en page ---------- */
+#app {
+    position: relative; z-index: 1;
+    height: 100vh;
+    display: flex; flex-direction: column;
+    opacity: 0;
+    transition: opacity 400ms ease;
+}
+body.ready #app { opacity: 1; }
+
+.top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 3rem 6rem 0;
+}
+.time {
+    font-size: 6rem; font-weight: 200; letter-spacing: -0.2rem; line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.time small { font-size: 2rem; font-weight: 400; letter-spacing: 0; margin-left: 0.8rem; color: var(--muted); }
+.meta { margin-top: 1rem; font-size: 1.6rem; color: var(--muted); display: flex; gap: 1.6rem; }
+.meta span + span::before { content: "·"; margin-right: 1.6rem; opacity: 0.6; }
+.meta [hidden] { display: none; }
+
+.actions { display: flex; gap: 1.2rem; margin-top: 1rem; }
+.pill {
+    display: flex; align-items: center; gap: 0.8rem;
+    padding: 0.9rem 1.6rem;
+    border-radius: 99rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 1.3rem;
+    transition: transform var(--dur) ease, background var(--dur) ease, color var(--dur) ease;
+}
+.pill svg { width: 1.5rem; height: 1.5rem; fill: currentColor; }
+.pill svg.stroke { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.pill.focused { background: var(--accent); color: var(--bg); transform: scale(var(--scale)); }
+
+#sections {
+    flex: 1;
+    overflow: hidden;
+    padding: 0.4rem 0 2rem;
+}
+
+.section { margin-top: 1.4rem; }
+.section h2 {
+    margin: 0 6rem 0.4rem;
+    font-size: 1.5rem; font-weight: 500; letter-spacing: 0.04rem;
+    color: var(--muted);
+}
+.section .count { margin-left: 0.8rem; font-weight: 400; opacity: 0.6; }
+.section .note { margin: 0 6rem; font-size: 1.2rem; color: var(--accent); }
+
+.track {
+    display: flex; gap: 2rem;
+    overflow: hidden;
+    padding: 1.2rem 6rem 0.8rem;
+}
+
+/* ---------- Tuiles ---------- */
+.tile {
+    flex: 0 0 auto;
+    width: 17rem;
+    display: flex; flex-direction: column; gap: 0.9rem;
+    transition: transform var(--dur) ease;
+    transform-origin: center 40%;
+}
+.tile .art {
+    position: relative;
+    height: 8.6rem;
+    border-radius: 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+}
+.tile .art::after {
+    content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit;
+    box-shadow: inset 0 0 0 0.2rem var(--accent);
+    opacity: 0;
+    transition: opacity var(--dur) ease;
+}
+.tile .art img { max-width: 62%; max-height: 70%; object-fit: contain; }
+.tile .name {
+    font-size: 1.25rem; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: 0 0.2rem;
+    transition: color var(--dur) ease;
+}
+.tile.focused { transform: scale(var(--scale)); }
+.tile.focused .art::after { opacity: 1; }
+.tile.focused .name { color: var(--text); }
+.tile .star {
+    position: absolute; margin: 0.8rem; width: 0.7rem; height: 0.7rem; border-radius: 50%;
+    background: var(--accent); opacity: 0.8;
+}
+.tile { position: relative; }
+
+.monogram {
+    width: 5.2rem; height: 5.2rem; border-radius: 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; font-weight: 600; letter-spacing: 0.05rem;
+}
+
+.tile.input .art { background: var(--surface-2); }
+.tile .port { font-size: 2rem; font-weight: 300; letter-spacing: 0.1rem; }
+.tile.input.off .art { opacity: 0.45; }
+.tile.ghost .art { background: transparent; border-style: dashed; border-color: rgba(255,255,255,0.14); }
+.tile .plus { font-size: 3rem; font-weight: 200; color: var(--muted); }
+.tile.wide { width: 30rem; }
+
+.tile.moving { transform: scale(var(--scale)) translateY(-0.8rem); }
+.tile.moving .art::after { opacity: 1; box-shadow: inset 0 0 0 0.25rem var(--accent), 0 0 0 0.4rem rgba(255,255,255,0.08); }
+
+/* ---------- Fenêtres ---------- */
+#overlay {
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 10;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity var(--dur) ease;
+}
+#overlay[hidden] { display: none; }
+#overlay.open { opacity: 1; }
+
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 1.4rem;
+    padding: 2.4rem;
+    width: 38rem;
+    max-height: 80vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.6);
+    transform: translateY(1rem);
+    transition: transform var(--dur) ease;
+}
+#overlay.open .panel { transform: none; }
+.panel.side {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 52rem; max-height: none;
+    border-radius: 0; border-width: 0 0 0 1px;
+    padding: 4rem 3.2rem;
+    transform: translateX(3rem);
+}
+.panel h3 { margin: 0 0 1.6rem; font-size: 2.4rem; font-weight: 400; }
+.panel .text { margin: 0.4rem 0 1.2rem; font-size: 1.3rem; line-height: 1.5; color: var(--muted); }
+.panel .text.small { font-size: 1.1rem; margin-top: 2rem; }
+.panel .list { overflow: hidden; display: flex; flex-direction: column; gap: 0.4rem; padding: 0.4rem; margin: -0.4rem; }
+.panel .group {
+    margin: 1.8rem 0.4rem 0.6rem; font-size: 1.1rem; text-transform: uppercase;
+    letter-spacing: 0.15rem; color: var(--muted); opacity: 0.8;
+}
+.panel .group:first-child { margin-top: 0; }
+
+.item {
+    display: flex; align-items: center; justify-content: space-between; gap: 1.6rem;
+    min-height: 4.4rem;
+    padding: 0 1.6rem;
+    border-radius: 0.8rem;
+    font-size: 1.45rem;
+    flex: 0 0 auto;
+    transition: background var(--dur) ease, color var(--dur) ease, transform var(--dur) ease;
+}
+.item.focused { background: var(--accent); color: var(--bg); }
+.item .value { display: flex; align-items: center; gap: 0.8rem; color: var(--muted); }
+.item.focused .value { color: var(--bg); }
+.item .value b { font-weight: 500; }
+.item .chev.none { visibility: hidden; }
+.item .chev { font-style: normal; opacity: 0; transition: opacity var(--dur) ease; }
+.item.focused .chev { opacity: 0.7; }
+.item .hint { display: none; font-size: 1.05rem; opacity: 0.7; }
+.item.focused .hint { display: inline; }
+.item.setting { position: relative; }
+.item.setting .hint { position: absolute; right: 1.6rem; bottom: 0.2rem; }
+
+.item.check .box {
+    width: 1.6rem; height: 1.6rem; border-radius: 0.4rem;
+    border: 0.15rem solid currentColor; opacity: 0.5;
+}
+.item.check.on .box { background: currentColor; opacity: 1; box-shadow: inset 0 0 0 0.3rem var(--surface); }
+.item.check.on.focused .box { box-shadow: inset 0 0 0 0.3rem var(--accent); }
+
+.field {
+    width: 100%; box-sizing: border-box;
+    padding: 1.2rem 1.4rem; font-size: 1.6rem;
+    background: var(--surface-2); border: 0.15rem solid var(--line); border-radius: 0.8rem;
+}
+.field.focused { border-color: var(--accent); }
+
+/* ---------- Toast, aperçu, mode entrée ---------- */
+#toast, #watch-hint {
+    position: fixed; left: 50%; bottom: 4rem; z-index: 20;
+    transform: translate(-50%, 1rem);
+    padding: 1rem 2rem; border-radius: 99rem;
+    background: rgba(28, 28, 28, 0.95); border: 1px solid var(--line);
+    font-size: 1.3rem;
+    opacity: 0;
+    transition: opacity 250ms ease, transform 250ms ease;
+}
+#toast.show, #watch-hint.show { opacity: 1; transform: translate(-50%, 0); }
+#preview-badge {
+    position: fixed; left: 50%; top: 1.2rem; transform: translateX(-50%);
+    font-size: 1rem; color: var(--muted); opacity: 0.6;
+}
+
+/* Une entrée HDMI est affichée sous la page : tout devient transparent. */
+html.watching, body.watching { background: transparent !important; }
+body.watching #app, body.watching #wallpaper, body.watching #overlay { display: none; }

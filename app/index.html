@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1920, initial-scale=1">
+    <title>TeleCoding</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-theme="noir" data-anim="subtle" data-wallpaper="none">
+    <div id="wallpaper"></div>
+
+    <div id="app">
+        <header class="top">
+            <div class="clock">
+                <div id="time" class="time">--:--</div>
+                <div class="meta">
+                    <span id="date"></span>
+                    <span id="weather" hidden></span>
+                </div>
+            </div>
+            <nav class="actions">
+                <button class="pill focusable" data-action="options" data-row="header">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    <span>Options</span>
+                </button>
+                <button class="pill focusable" data-action="settings" data-row="header">
+                    <svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11M18 7h3M3 17h5M12 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+                    <span>Paramètres</span>
+                </button>
+            </nav>
+        </header>
+
+        <main id="sections" data-scroll="y"></main>
+
+        <div id="preview-badge" hidden>Aperçu navigateur · données simulées</div>
+    </div>
+
+    <div id="overlay" hidden></div>
+    <div id="watch-hint" hidden></div>
+    <div id="toast" hidden></div>
+
+    <script src="js/platform.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/focus.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
