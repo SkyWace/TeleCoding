@@ -20,7 +20,10 @@
         weatherLon: null,
         animations: 'subtle',
         sections: SECTIONS.slice(),
-        favorites: null // null = premier lancement, rempli avec les applis détectées
+        favorites: null, // null = premier lancement, rempli avec les applis détectées
+        favoritesVersion: 0, // < 2 : favoris choisis avant le tri des applis système, à refaire
+        showSystemApps: false,
+        hiddenApps: []
     };
 
     var listeners = [];
@@ -40,6 +43,7 @@
         SECTIONS.forEach(function (x) { if (secs.indexOf(x) < 0) secs.push(x); });
         out.sections = secs;
         if (out.favorites !== null && !Array.isArray(out.favorites)) out.favorites = null;
+        if (!Array.isArray(out.hiddenApps)) out.hiddenApps = [];
         return out;
     }
 
@@ -64,9 +68,9 @@
             listeners.forEach(function (fn) { fn(state, patch); });
         },
         reset: function () {
-            var favorites = state.favorites;
+            var keep = { favorites: state.favorites, favoritesVersion: state.favoritesVersion, hiddenApps: state.hiddenApps };
             state = clone(DEFAULTS);
-            state.favorites = favorites;
+            Object.assign(state, keep);
             save();
             listeners.forEach(function (fn) { fn(state, clone(DEFAULTS)); });
         },

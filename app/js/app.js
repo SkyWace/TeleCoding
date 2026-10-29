@@ -132,9 +132,19 @@
         return null;
     }
 
+    // Applis affichées : sans les services système (sauf réglage) ni les applis masquées.
+    function visibleApps() {
+        var s = store.get();
+        return state.apps.filter(function (a) {
+            return (s.showSystemApps || !a.system) && s.hiddenApps.indexOf(a.id) < 0;
+        });
+    }
+
     function favorites() {
-        var favs = store.get().favorites || [];
-        return favs.map(appById).filter(Boolean);
+        var s = store.get();
+        return (s.favorites || []).map(appById).filter(function (a) {
+            return a && s.hiddenApps.indexOf(a.id) < 0;
+        });
     }
 
     function isFavorite(id) { return (store.get().favorites || []).indexOf(id) >= 0; }
@@ -143,10 +153,13 @@
         return platform.listApps().then(function (apps) {
             state.apps = apps;
             state.appsLoaded = true;
-            var favs = store.get().favorites;
-            if (favs === null) {
-                // Premier lancement : les premières applis détectées deviennent favorites.
-                store.set({ favorites: apps.slice(0, 8).map(function (a) { return a.id; }) });
+            var s = store.get();
+            if (s.favorites === null || s.favoritesVersion < 2) {
+                // Premier lancement (ou favoris choisis avant le tri) : les premières vraies applis.
+                store.set({
+                    favorites: visibleApps().slice(0, 8).map(function (a) { return a.id; }),
+                    favoritesVersion: 2
+                });
             }
         }).catch(function (err) {
             state.appsLoaded = true;
@@ -231,14 +244,15 @@
             }
             return section('inputs', 'Entrées', null, state.inputs.map(inputTile));
         }
-        var apps = state.apps.map(function (a) { return appTile(a, 'apps'); });
+        var all = visibleApps();
+        var apps = all.map(function (a) { return appTile(a, 'apps'); });
         if (!apps.length && state.appsLoaded) {
             apps.push(h('button', { class: 'tile wide ghost focusable', 'data-row': 'apps', 'data-action': 'refresh' }, [
                 h('div', { class: 'art' }, [h('span', { class: 'port', text: '↻' })]),
                 h('span', { class: 'name', text: 'Aucune application détectée · Actualiser' })
             ]));
         }
-        return section('apps', 'Toutes les applications', state.apps.length, apps);
+        return section('apps', 'Toutes les applications', all.length, apps);
     }
 
     function focusKey(el) {
@@ -420,6 +434,12 @@
         var items = [['Ouvrir', function () { closeOverlay(); launch(app); }]];
         items.push([fav ? 'Retirer des favoris' : 'Ajouter aux favoris', function () { closeOverlay(); toggleFavorite(appId); render(); }]);
         if (fav) items.push(['Déplacer dans les favoris', function () { closeOverlay(); startMove(appId); }]);
+        items.push(['Masquer cette appli', function () {
+            closeOverlay();
+            store.set({ hiddenApps: store.get().hiddenApps.concat([appId]) });
+            render();
+            TC.ui.toast('Masquée : ' + app.name + ' (Paramètres ▸ Applis masquées pour la réafficher)', 4000);
+        }]);
         items.push(['Annuler', closeOverlay]);
         openMenu(app.name, items);
         return true;
@@ -453,7 +473,7 @@
             panel.appendChild(h('h3', { text: 'Gérer les favoris' }));
             panel.appendChild(h('p', { class: 'text', text: 'OK pour ajouter ou retirer. Retour pour fermer.' }));
             var list = h('div', { class: 'list', 'data-scroll': 'y' });
-            state.apps.forEach(function (app, i) {
+            visibleApps().forEach(function (app, i) {
                 var b = h('button', { class: 'item check focusable' + (isFavorite(app.id) ? ' on' : ''), 'data-first': i === 0 || null, 'data-app-check': app.id }, [
                     h('span', { text: app.name }), h('span', { class: 'box' })
                 ]);
@@ -467,7 +487,7 @@
                 };
                 list.appendChild(b);
             });
-            if (!state.apps.length) list.appendChild(menuItem('Aucune application détectée', closeOverlay, true));
+            if (!visibleApps().length) list.appendChild(menuItem('Aucune application détectée', closeOverlay, true));
             panel.appendChild(list);
         }, { kind: 'side' });
     }
@@ -592,6 +612,17 @@
             list.appendChild(h('div', { class: 'group', text: 'Accueil' }));
             list.appendChild(row('Gérer les favoris', (s.favorites || []).length + ' favori(s)', {
                 activate: function () { closeOverlay(); openManageFavorites(); }
+            }));
+            list.appendChild(row('Applis système', s.showSystemApps ? 'Affichées' : 'Masquées', {
+                cycle: function () { set({ showSystemApps: !s.showSystemApps }); render(); }
+            }));
+            list.appendChild(row('Applis masquées', s.hiddenApps.length ? s.hiddenApps.length + ' · OK pour tout réafficher' : 'Aucune', {
+                activate: function () {
+                    if (!s.hiddenApps.length) return;
+                    set({ hiddenApps: [] });
+                    render();
+                    TC.ui.toast('Toutes les applis sont réaffichées');
+                }
             }));
             s.sections.forEach(function (id, i) {
                 var b = row('Section ' + (i + 1), SECTION_LABELS[id], {

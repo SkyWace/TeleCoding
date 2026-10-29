@@ -70,7 +70,12 @@ async function focusSetting(page, label) {
     check((await page.textContent('#date')).length > 5, 'date affichée');
     const favCount = await page.locator('[data-row="favorites"][data-app]').count();
     check(favCount === 8, 'premier lancement : 8 favoris détectés automatiquement (' + favCount + ')');
-    check(await page.locator('[data-row="apps"][data-app]').count() === 12, 'toutes les applis listées');
+    const appNames = await page.$$eval('[data-row="apps"] .name', (els) => els.map((e) => e.textContent));
+    check(appNames.length === 10, '10 vraies applis sur 22 entrées (' + appNames.join(', ') + ')');
+    check(!appNames.some((n) => /AdPlayer|Network status|survey|service|preview|User Guide/i.test(n)), 'services système masqués');
+    check(appNames.filter((n) => /^youtube$/i.test(n)).length === 1, 'YouTube en double fusionné');
+    check(appNames.includes('Spotify') && appNames.includes('TF1+'), 'noms raccourcis (Spotify, TF1+)');
+    check(await page.evaluate(() => TC.platform.isUserApp('org.tizen.primevideo') && !TC.platform.isUserApp('org.tizen.primevideo-dummy')), 'appli « dummy » ignorée');
     check(await page.locator('[data-input]').count() === 4, '4 entrées (HDMI 1-3 + TV)');
     let f = await focused(page);
     check(f && f.row === 'favorites', 'focus initial sur le premier favori');
@@ -148,6 +153,20 @@ async function focusSetting(page, label) {
     await page.waitForTimeout(100);
     check(await page.locator('[data-row="favorites"][data-app]').count() === 7, 'favori retiré');
 
+    // Masquer une appli depuis « Toutes les applications »
+    for (let i = 0; i < 4 && (await focused(page)).row !== 'apps'; i++) await press(page, 'ArrowDown');
+    check((await focused(page)).row === 'apps', 'rangée Applications');
+    await press(page, 'm');
+    for (let i = 0; i < 6; i++) {
+        if ((await focused(page)).text === 'Masquer cette appli') break;
+        await press(page, 'ArrowDown');
+    }
+    check((await focused(page)).text === 'Masquer cette appli', 'option « Masquer cette appli »');
+    await press(page, 'Enter');
+    await page.waitForTimeout(100);
+    check(await page.locator('[data-row="apps"][data-app]').count() === 9, 'appli masquée');
+    await press(page, 'ArrowUp', 2);
+
     console.log('Paramètres');
     await press(page, 'ArrowUp');
     await press(page, 'ArrowRight', 2);
@@ -164,6 +183,15 @@ async function focusSetting(page, label) {
     check(await focusSetting(page, 'Afficher la date'), 'ligne « Afficher la date »');
     await press(page, 'Enter');
     check(await page.isHidden('#date'), 'date masquée');
+    check(await focusSetting(page, 'Applis système'), 'ligne « Applis système »');
+    await press(page, 'ArrowRight');
+    const withSystem = await page.locator('[data-row="apps"][data-app]').count();
+    check(withSystem > 9, 'applis système affichées sur demande (' + withSystem + ')');
+    await press(page, 'ArrowRight');
+    check(await page.locator('[data-row="apps"][data-app]').count() === 9, 'applis système de nouveau masquées');
+    check(await focusSetting(page, 'Applis masquées'), 'ligne « Applis masquées »');
+    await press(page, 'Enter');
+    check(await page.locator('[data-row="apps"][data-app]').count() === 10, 'applis masquées réaffichées');
     check(await focusSetting(page, 'Section 2'), 'ligne « Section 2 »');
     await press(page, 'Enter');
     const secs = await page.evaluate(() => TC.store.get().sections);

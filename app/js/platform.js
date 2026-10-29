@@ -31,6 +31,48 @@
     };
     var SOURCE_ORDER = ['HDMI', 'AV', 'COMP', 'SVIDEO', 'SCART', 'DVI', 'PC', 'TV'];
 
+    /*
+     * Tri des applis. getAppsInfo() renvoie ~450 entrées sur une Samsung : surtout des
+     * services système (pub, assistants, mises à jour…) déclarés visibles. On garde :
+     *  - les applis du store Samsung : identifiant « 10 caractères » + « . » + nom,
+     *    sauf leurs services d'arrière-plan ;
+     *  - les quelques vraies applis intégrées par Samsung (affichées seulement si installées).
+     * Le reste est classé « système » : masqué par défaut, affichable dans les paramètres.
+     */
+    var STORE_ID = /^[A-Za-z0-9]{10}\.[A-Za-z0-9_-]+$/;
+    var STORE_HELPER = /service$|preview$|extension$|emanual|publicvalue|privacychoices|^otapp$|cmswebapp/i;
+    var BUILTIN_APPS = [
+        'org.tizen.netflix-app', 'org.tizen.primevideo', 'org.tizen.browser',
+        'com.samsung.tv.cobalt-yt', 'com.samsung.tv.cobalt-ytkids', 'org.tizen.apple.apple-music',
+        'com.samsung.tv.aria-video', 'com.samsung.tv.SmartThingsApp', 'com.samsung.tv.gaminghub',
+        'com.samsung.tv.store'
+    ];
+
+    function isUserApp(id) {
+        if (/-dummy$/.test(id)) return false;
+        if (BUILTIN_APPS.indexOf(id) >= 0) return true;
+        return STORE_ID.test(id) && !STORE_HELPER.test(id.split('.')[1]);
+    }
+
+    // « TF1+ : Streaming, TV en Direct » -> « TF1+ » ; « Spotify - Music and Podcasts » -> « Spotify »
+    function cleanName(name) {
+        var n = String(name || '').trim();
+        var short = n.split(/\s[:\-–|]\s/)[0].trim();
+        return short || n;
+    }
+
+    // Une même appli peut exister deux fois (YouTube du store + YouTube intégré) :
+    // on garde l'appli utilisateur, puis la première rencontrée.
+    function dedupeByName(apps) {
+        var byName = {};
+        apps.forEach(function (a) {
+            var k = a.name.toLowerCase();
+            var prev = byName[k];
+            if (!prev || (prev.system && !a.system) || (!prev.system && !a.system && STORE_ID.test(a.id) && !STORE_ID.test(prev.id))) byName[k] = a;
+        });
+        return apps.filter(function (a) { return byName[a.name.toLowerCase()] === a; });
+    }
+
     function promisify(fn) {
         return new Promise(function (resolve, reject) {
             try {
@@ -95,13 +137,13 @@
             return promisify(function (ok, ko) { tz.application.getAppsInfo(ok, ko); }).then(function (infos) {
                 var seen = {};
                 var apps = infos.filter(function (a) {
-                    if (!a || !a.id || !a.name || a.show === false || a.id === self || seen[a.id]) return false;
+                    if (!a || !a.id || !String(a.name || '').trim() || a.show === false || a.id === self || seen[a.id]) return false;
                     seen[a.id] = true;
                     return true;
                 }).map(function (a) {
-                    return { id: a.id, name: a.name, icon: iconUrl(a.iconPath) };
+                    return { id: a.id, name: cleanName(a.name), icon: iconUrl(a.iconPath), system: !isUserApp(a.id) };
                 });
-                return sortByName(apps);
+                return sortByName(dedupeByName(apps));
             });
         },
 
@@ -152,8 +194,20 @@
     /* ------------------------------------------------------------------ */
     /* Implémentation aperçu (navigateur, tests automatisés)               */
     /* ------------------------------------------------------------------ */
-    var MOCK_APPS = ['Netflix', 'Prime Video', 'YouTube', 'Disney+', 'Spotify', 'Amazon Music',
-        'Plex', 'Kodi', 'Twitch', 'Navigateur Internet', 'Galerie', 'SmartThings'];
+    // Identifiants relevés sur une UE43CU7025 (sdb shell 0 applist), mélange d'applis et de services.
+    var MOCK_APPS = [
+        ['org.tizen.netflix-app', 'Netflix'], ['org.tizen.primevideo', 'Prime Video'],
+        ['org.tizen.primevideo-dummy', 'Prime Video'], ['9Ur5IzDKqV.TizenYouTube', 'YouTube'],
+        ['com.samsung.tv.cobalt-yt', 'Youtube'], ['MCmYXNxgcu.DisneyPlus', 'Disney+'],
+        ['MCmYXNxgcu.DisneyPlusService', 'DisneyPlusPreviewService'],
+        ['rJeHak5zRg.Spotify', 'Spotify - Music and Podcasts'], ['rJeHak5zRg.SpotifyService', 'SpotifyRecomendationsService'],
+        ['Ol7HVEXtqh.6play', '6play'], ['E0P3lRI4H7.MYTF1', 'TF1+ : Streaming, TV en Direct'],
+        ['QY16tZ64E3.francetv', 'france.tv'], ['aLlph042JZ.arte', 'ARTE'], ['aLlph042JZ.preview', 'preview'],
+        ['org.tizen.browser', 'Internet'], ['OGLLvqej7u.service', 'service'],
+        ['org.tizen.rm-network-status', ' Network status widget '], ['org.tizen.rm-survey', ' RM survey popup '],
+        ['com.samsung.tv.adplayer', 'AdPlayer'], ['com.samsung.tv.targeted-ad-service', 'Targeted Advertisment Service'],
+        ['25emanual2.emanual', 'User Guide'], ['w2VwCK465D.OTApp', 'Samsung TV Plus Privacy Settings']
+    ];
     var mockSources = {
         connected: [{ type: 'HDMI', number: 1 }, { type: 'HDMI', number: 3 }, { type: 'TV', number: 1 }],
         disconnected: [{ type: 'HDMI', number: 2 }]
@@ -165,9 +219,9 @@
         watching: null,
 
         listApps: function () {
-            return Promise.resolve(sortByName(MOCK_APPS.map(function (name) {
-                return { id: 'mock.' + name.toLowerCase().replace(/[^a-z0-9]+/g, ''), name: name, icon: '' };
-            })));
+            return Promise.resolve(sortByName(dedupeByName(MOCK_APPS.map(function (m) {
+                return { id: m[0], name: cleanName(m[1]), icon: '', system: !isUserApp(m[0]) };
+            }))));
         },
         launchApp: function (id) {
             this.launched.push(id);
@@ -190,5 +244,6 @@
 
     TC.platform = isTizen ? tizenImpl : previewImpl;
     TC.platform.errorText = errorText;
+    TC.platform.isUserApp = isUserApp;
     TC.KEYS = KEYS;
 })(this);

@@ -129,7 +129,7 @@ body.ready #app { opacity: 1; }
 .tile {
     flex: 0 0 auto;
     width: 17rem;
-    display: flex; flex-direction: column; gap: 0.9rem;
+    display: flex; flex-direction: column; align-items: stretch; gap: 0.9rem;
     transition: transform var(--dur) ease;
     transform-origin: center 40%;
 }
@@ -141,6 +141,9 @@ body.ready #app { opacity: 1; }
     border: 1px solid var(--line);
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
+    /* Sans ça, le moteur de la TV rétrécit la carte à la taille de l'icône. */
+    width: 100%;
+    box-sizing: border-box;
 }
 .tile .art::after {
     content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit;

@@ -11,7 +11,7 @@ La CU7025 tourne sous **Tizen** (le système de Samsung), pas sous Android TV. �
 | Fonction | Possible ? | Comment |
 |---|---|---|
 | Appli personnelle sans pub | ✅ | Appli web Tizen (`.wgt`) installée en mode développeur |
-| Détecter les applis installées | ✅ | `tizen.application.getAppsInfo()`, rien n'est codé en dur |
+| Détecter les applis installées | ✅ | `tizen.application.getAppsInfo()`, puis tri : la TV déclare ~450 entrées, surtout des services système. On garde les applis du store et les vraies applis intégrées (Netflix, Prime Video, Internet…). Les autres sont réglables dans *Paramètres ▸ Applis système* |
 | Lancer une appli | ✅ | `tizen.application.launch()` |
 | Entrées HDMI | ✅ (dans l'appli) | `tizen.tvwindow.setSource()` : l'entrée s'affiche en plein écran *dans* TeleCoding, et Retour ramène à l'accueil |
 | Remplacer le Smart Hub / la touche HOME | ❌ | Impossible sur Tizen pour une appli tierce. HOME ouvre toujours le Smart Hub |
@@ -91,5 +91,5 @@ npm install && npm test
 
 ### État des tests
 
-- ✅ **Interface, dans Chromium avec API simulées** : 45 vérifications (navigation, lancement, HDMI, favoris, réorganisation, paramètres, persistance, aucune erreur JS).
+- ✅ **Interface, dans Chromium avec API simulées** : 58 vérifications (navigation, lancement, HDMI, favoris, réorganisation, paramètres, persistance, aucune erreur JS).
 - ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).
