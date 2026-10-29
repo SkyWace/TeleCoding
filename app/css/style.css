@@ -17,7 +17,7 @@ body {
     --bg: #080808;
     --glass: rgba(22, 22, 24, 0.78);
     --glass-line: rgba(255, 255, 255, 0.10);
-    --card: #1c1c1f;
+    --card: #1c1c1e; /* tile_bg.xml */
     --text: #f5f5f5;
     --muted: rgba(255, 255, 255, 0.55);
     --accent: #ffffff;
@@ -130,15 +130,16 @@ body.ready #app { opacity: 1; }
     display: flex; align-items: center; gap: 0.9rem;
     height: 5.2rem; padding: 0 2.2rem;
     border-radius: 99rem;
-    background: var(--glass);
-    border: 1px solid var(--glass-line);
+    /* pill_bg.xml de CleanYourTV : dégradé #2EFFFFFF → #14FFFFFF, contour #38FFFFFF */
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+    border: 1px solid rgba(255, 255, 255, 0.22);
     font-size: 1.55rem; font-weight: 500;
-    --cut: rgba(30, 30, 32, 1);
+    --cut: #2b2b2e;
     transition: transform var(--dur) ease, background var(--dur) ease, color var(--dur) ease;
 }
 .pill svg { width: 1.9rem; height: 1.9rem; fill: currentColor; }
 .pill svg .cut { fill: var(--cut); }
-.pill.focused { background: var(--accent); color: var(--on-accent); transform: scale(var(--scale)); --cut: var(--accent); }
+.pill.focused { background: rgba(255, 255, 255, 0.96); color: var(--on-accent); transform: scale(var(--scale)); --cut: var(--accent); }
 
 .hero {
     position: absolute; left: var(--side); bottom: calc(var(--tile-h) + 2 * var(--band-pad) + 3.2rem);
@@ -153,7 +154,7 @@ body.ready #app { opacity: 1; }
 
 /* ---------- Bande des favoris ---------- */
 .band {
-    background: rgba(18, 18, 20, 0.72);
+    background: #141416; /* DockDecoration.java : bande 0x141416 */
     border: 1px solid var(--glass-line);
     border-radius: 2.4rem;
 }
@@ -165,7 +166,7 @@ body.ready #app { opacity: 1; }
 .note { margin: 1rem 0 0 0.6rem; font-size: 1.25rem; color: var(--muted); }
 
 /* ---------- Rangées sous la bande ---------- */
-#sections { padding: 3.2rem 0 6rem; }
+#sections { padding: 3.6rem 0 6rem; }
 .row-section { padding: 0 calc(var(--side) + var(--band-pad)); margin-bottom: 2.4rem; }
 .row-section h2 {
     margin: 0 0 1.2rem 0.2rem;
@@ -173,7 +174,15 @@ body.ready #app { opacity: 1; }
     color: var(--muted);
 }
 .row-section h2 .count { margin-left: 0.8rem; opacity: 0.7; letter-spacing: 0.1rem; }
-.grid { display: flex; flex-wrap: wrap; gap: var(--gap); }
+.grid { display: flex; flex-wrap: wrap; gap: 3.6rem var(--gap); }
+.tile .name {
+    position: absolute; top: 100%; left: 0; right: 0; margin-top: 0.9rem;
+    font-size: 1.4rem; font-weight: 500; letter-spacing: 0.03rem; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    opacity: 0; transform: translateY(-0.5rem);
+    transition: opacity var(--dur) ease, transform var(--dur) ease;
+}
+.tile.focused .name { opacity: 1; transform: none; }
 
 /* ---------- Cartes ---------- */
 .tile {
@@ -191,7 +200,14 @@ body.ready #app { opacity: 1; }
     overflow: hidden;
 }
 .tile .art img { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
-.tile .art.small img { height: 62%; }
+.tile .art.uniform img { height: 62%; } /* ICON_SHARE de CleanYourTV */
+.tile .art.logo { gap: 0.55em; font-size: calc(var(--tile-h) * 0.2); padding: 0 0.8em; box-sizing: border-box; }
+.tile .art.logo svg { height: 1.55em; width: 1.55em; flex: 0 0 auto; }
+.tile .art.logo .brand {
+    font-weight: 600; letter-spacing: -0.01em; line-height: 1.05;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tile .art.logo .brand.caps { text-transform: uppercase; font-weight: 700; letter-spacing: 0.02em; }
 .tile::after {
     content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit;
     box-shadow: 0 0 0 0.3rem rgba(255, 255, 255, 0.92), 0 1.4rem 3.6rem rgba(0, 0, 0, 0.55);
@@ -236,8 +252,9 @@ body.ready #app { opacity: 1; }
 #overlay.light { background: rgba(0, 0, 0, 0.2); }
 
 .panel {
-    background: #1a1a1d;
-    border: 1px solid var(--glass-line);
+    /* glass_panel.xml de CleanYourTV : dégradé #2A2A2E → #161618, contour #33FFFFFF */
+    background: linear-gradient(180deg, #2a2a2e, #161618);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 2rem;
     padding: 2.4rem;
     width: 40rem;

@@ -157,9 +157,16 @@
     // Applis affichées : sans les services système (sauf réglage) ni les applis masquées.
     function visibleApps() {
         var s = store.get();
-        return state.apps.filter(function (a) {
+        var list = state.apps.filter(function (a) {
             return (s.showSystemApps || !a.system) && s.hiddenApps.indexOf(a.id) < 0;
         });
+        if (s.appSort === 'usage') {
+            // Les plus lancées d'abord ; à égalité, l'ordre alphabétique reste.
+            list = list.map(function (a, i) { return { a: a, i: i, n: s.launches[a.id] || 0 }; })
+                .sort(function (x, y) { return (y.n - x.n) || (x.i - y.i); })
+                .map(function (x) { return x.a; });
+        }
+        return list;
     }
 
     function favorites() {
@@ -175,6 +182,7 @@
         return platform.listApps().then(function (apps) {
             state.apps = apps;
             state.appsLoaded = true;
+            store.set({ appsCache: apps });
             var s = store.get();
             if (s.favorites === null || s.favoritesVersion < 2) {
                 // Premier lancement (ou favoris choisis avant le tri) : les premières vraies applis.
@@ -212,8 +220,10 @@
             'data-row': row,
             'data-app': app.id
         }, [
-            TC.ui.appArt(app),
-            showFav && isFavorite(app.id) ? h('span', { class: 'fav-dot' }) : null
+            TC.ui.appArt(app, store.get().logoStyle),
+            showFav && isFavorite(app.id) ? h('span', { class: 'fav-dot' }) : null,
+            // Comme CleanYourTV : sous la bande, le nom apparaît sous la carte sélectionnée.
+            row !== 'favorites' ? h('span', { class: 'name', text: app.name }) : null
         ]);
     }
 
@@ -279,8 +289,7 @@
                         h('div', { class: 'art' }, [h('span', { class: 'plus', text: '↻' }), h('span', { class: 'hint-text', text: 'Aucune appli détectée · Actualiser' })])
                     ]));
                 }
-                main.appendChild(h('section', { class: 'row-section', 'data-section': 'apps' }, [
-                    h('h2', {}, ['Toutes les applications', h('span', { class: 'count', text: String(all.length) })]),
+                main.appendChild(h('section', { class: 'row-section', 'data-section': 'apps', 'data-count': all.length }, [
                     h('div', { class: 'grid' }, grid)
                 ]));
             }
@@ -329,6 +338,9 @@
     /* Actions                                                             */
     /* ------------------------------------------------------------------ */
     function launch(app) {
+        var launches = Object.assign({}, store.get().launches);
+        launches[app.id] = (launches[app.id] || 0) + 1;
+        store.set({ launches: launches });
         platform.launchApp(app.id).then(function () {
             if (platform.preview) TC.ui.toast('Aperçu : lancement de ' + app.name);
         }).catch(function (err) {
@@ -648,6 +660,9 @@
                     }
                 }));
             }
+            list.appendChild(row('Logos des applis', s.logoStyle === 'samsung' ? 'Icônes Samsung' : 'Pack TeleCoding', {
+                cycle: function () { set({ logoStyle: s.logoStyle === 'samsung' ? 'pack' : 'samsung' }); render(); }
+            }));
             list.appendChild(row('Applis par rangée', choiceLabel(COLS, s.cols), {
                 cycle: function (d) { set({ cols: cycle(COLS, s.cols, d) }); render(); }
             }));
@@ -704,6 +719,9 @@
                     }
                 }));
             }
+            list.appendChild(row('Ordre des applis', s.appSort === 'usage' ? 'Les plus utilisées' : 'De A à Z', {
+                cycle: function () { set({ appSort: s.appSort === 'usage' ? 'alpha' : 'usage' }); render(); }
+            }));
             list.appendChild(row('Applis système', s.showSystemApps ? 'Affichées' : 'Masquées', {
                 cycle: function () { set({ showSystemApps: !s.showSystemApps }); render(); }
             }));
@@ -863,11 +881,21 @@
         scheduleClock();
         refreshNetwork();
         TC.focus.push(doc.getElementById('app'));
-        refreshAll().then(function () {
+        function showHome() {
+            if (doc.body.classList.contains('ready')) return;
             var first = doc.querySelector('#dock .focusable');
             if (first) TC.focus.set(first);
             doc.body.classList.add('ready');
-        });
+        }
+        // Démarrage instantané : la dernière liste connue s'affiche tout de suite,
+        // la vraie liste la remplace dès que la TV l'a renvoyée.
+        var cached = store.get().appsCache;
+        if (cached.length && store.get().favorites) {
+            state.apps = cached;
+            render();
+            showHome();
+        }
+        refreshAll().then(showHome);
         refreshWeather();
         setInterval(refreshWeather, 30 * 60 * 1000);
     }

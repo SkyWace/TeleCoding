@@ -27,6 +27,10 @@
         favorites: null, // null = premier lancement, rempli avec les applis détectées
         favoritesVersion: 0, // < 2 : favoris choisis avant le tri des applis système, à refaire
         showSystemApps: false,
+        logoStyle: 'pack',      // 'pack' (logos TeleCoding) ou 'samsung' (icônes de la TV)
+        appSort: 'alpha',       // 'alpha' ou 'usage'
+        launches: {},           // id -> nombre de lancements (tri « les plus utilisées »)
+        appsCache: [],          // dernière liste d'applis : affichage immédiat au démarrage
         hiddenApps: []
     };
 
@@ -50,6 +54,8 @@
         if ([4, 5, 6].indexOf(out.cols) < 0) out.cols = 4;
         if (out.favorites !== null && !Array.isArray(out.favorites)) out.favorites = null;
         if (!Array.isArray(out.hiddenApps)) out.hiddenApps = [];
+        if (!out.launches || typeof out.launches !== 'object') out.launches = {};
+        if (!Array.isArray(out.appsCache)) out.appsCache = [];
         return out;
     }
 
@@ -77,7 +83,7 @@
             listeners.forEach(function (fn) { fn(state, patch); });
         },
         reset: function () {
-            var keep = { favorites: state.favorites, favoritesVersion: state.favoritesVersion, hiddenApps: state.hiddenApps };
+            var keep = { favorites: state.favorites, favoritesVersion: state.favoritesVersion, hiddenApps: state.hiddenApps, launches: state.launches, appsCache: state.appsCache };
             state = clone(DEFAULTS);
             Object.assign(state, keep);
             save();

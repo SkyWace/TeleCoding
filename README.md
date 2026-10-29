@@ -10,7 +10,9 @@ Le design reprend celui du launcher Android [CleanYourTV](https://github.com/Gat
 - la **grille** de toutes les applis en dessous ;
 - en haut, la salutation, l'heure et la date, avec des **pastilles** Entrées / Wi-Fi / Paramètres.
 
-La police Outfit vient de ce projet (licence OFL, voir `app/fonts/LICENSE.md`).
+Une partie de leur code est transposée en JavaScript : `app/js/artwork.js` reprend leur mode « uniform tiles » (`AppAdapter.java`), qui donne à chaque carte la couleur du support de l'icône et au halo sa couleur dominante. Les couleurs et arrondis viennent de leurs fichiers `pill_bg.xml`, `glass_panel.xml`, `tile_bg.xml` et `DockDecoration.java`, la police Outfit aussi. Licences : [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+**Logos :** pour 17 marques (Netflix, YouTube, Spotify, Apple TV, Apple Music, Crunchyroll, Rakuten TV, Orange TV, Plex, Kodi, Twitch, Deezer…), TeleCoding affiche un logo net tiré de [Simple Icons](https://simpleicons.org). Les autres applis gardent leur icône Samsung. *Paramètres ▸ Logos des applis* permet de revenir aux icônes Samsung partout.
 
 ## Ce qu'il faut savoir sur cette TV
 
@@ -43,7 +45,7 @@ Limites connues de l'affichage HDMI dans l'appli : tant que TeleCoding affiche l
 
 - **Apparence :** thème (Ambiance, qui suit la couleur de l'appli ; Minuit, Ambre, Émeraude ; Noir profond ; Noir OLED), fond d'écran (dégradés ou image par URL), applis par rangée (4, 5 ou 6), animations.
 - **En-tête :** salutation, heure 12 h / 24 h, date, météo (désactivée par défaut).
-- **Accueil :** favoris, rangée Entrées, ordre des rangées, applis système, applis masquées.
+- **Accueil :** favoris, rangée Entrées, ordre des rangées, ordre des applis (A → Z ou les plus utilisées), applis système, applis masquées.
 
 ![Paramètres](docs/parametres.png)
 
@@ -91,7 +93,9 @@ app/              appli Tizen (config.xml, index.html, css/, js/, fonts/)
   js/platform.js  API Tizen, avec simulation automatique dans un navigateur
   js/store.js     préférences (localStorage)
   js/focus.js     navigation spatiale à la télécommande
-  js/ui.js        cartes, couleurs des icônes, halo
+  js/ui.js        cartes, logos, halo
+  js/artwork.js   couleurs des icônes (portage de CleanYourTV)
+  js/logos.js     pack de logos (généré par tools/build-logos.py)
   js/app.js       écran d'accueil, menus, paramètres, touches
 scripts/          find-tv, deploy, restore-original-home (PowerShell)
 tests/            test de l'interface au clavier (Playwright)

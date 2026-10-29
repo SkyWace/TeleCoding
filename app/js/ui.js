@@ -44,44 +44,44 @@
         return alpha === undefined ? 'rgb(' + rgb.join(',') + ')' : 'rgba(' + rgb.join(',') + ',' + alpha + ')';
     }
 
-    /*
-     * Couleurs d'une icône, lues sur une miniature 32×32 :
-     *  - bg   : couleur moyenne des bords, pour que l'icône se fonde dans la carte ;
-     *  - glow : la couleur la plus vive, pour le halo (le rouge de YouTube, pas son fond blanc).
-     * Renvoie null si l'image n'est pas lisible (canvas protégé) : on garde alors une carte sombre.
-     */
     var colors = {};
-    function analyze(img) {
-        try {
-            var size = 32;
-            var c = doc.createElement('canvas');
-            c.width = c.height = size;
-            var ctx = c.getContext('2d');
-            ctx.drawImage(img, 0, 0, size, size);
-            var d = ctx.getImageData(0, 0, size, size).data;
-            var edge = [0, 0, 0], edgeN = 0, edgeTotal = 0;
-            var best = null, bestScore = 0;
-            for (var y = 0; y < size; y++) {
-                for (var x = 0; x < size; x++) {
-                    var i = (y * size + x) * 4;
-                    var r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-                    var isEdge = x < 2 || y < 2 || x >= size - 2 || y >= size - 2;
-                    if (isEdge) edgeTotal++;
-                    if (a < 160) continue;
-                    if (isEdge) { edge[0] += r; edge[1] += g; edge[2] += b; edgeN++; }
-                    var max = Math.max(r, g, b), min = Math.min(r, g, b);
-                    var score = max ? ((max - min) / max) * (max / 255) : 0;
-                    if (score > bestScore) { bestScore = score; best = [r, g, b]; }
-                }
-            }
-            var bg = edgeN > edgeTotal * 0.7 ? edge.map(function (v) { return Math.round(v / edgeN); }) : null;
-            return { bg: bg, glow: bestScore > 0.3 ? best : bg };
-        } catch (e) {
-            return null;
-        }
+
+    function hexToRgb(hex) {
+        var n = parseInt(hex.slice(1), 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
     }
 
-    function appArt(app) {
+    function neutral(rgb) { return Math.max.apply(null, rgb) - Math.min.apply(null, rgb) < 24; }
+
+    function normName(name) {
+        return String(name).toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]/g, '');
+    }
+
+    // Logo du pack (Simple Icons) correspondant au nom de l'appli, ou null.
+    function logoFor(app) {
+        var logos = TC.LOGOS || {};
+        var n = normName(app.name);
+        var keys = Object.keys(logos);
+        for (var i = 0; i < keys.length; i++) {
+            if (logos[keys[i]].names.indexOf(n) >= 0) return logos[keys[i]];
+        }
+        return null;
+    }
+
+    function logoArt(app, logo) {
+        var box = h('div', { class: 'art logo' });
+        box.style.background = logo.bg;
+        box.style.color = logo.text;
+        box.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="' + logo.fg + '" d="' + logo.path + '"/></svg>';
+        box.appendChild(h('span', { class: 'brand' + (/netflix/i.test(logo.title) ? ' caps' : ''), text: app.name }));
+        var fg = hexToRgb(logo.fg), bg = hexToRgb(logo.bg);
+        colors[app.id + '|pack'] = { bg: bg, glow: !neutral(fg) ? fg : !neutral(bg) ? bg : [120, 124, 136] };
+        return box;
+    }
+
+    function appArt(app, style) {
+        var logo = style !== 'samsung' ? logoFor(app) : null;
+        if (logo) return logoArt(app, logo);
         var box = h('div', { class: 'art' });
         var fallback = hslToRgb(hue(app.name), 45, 32);
         function useMonogram() {
@@ -95,10 +95,16 @@
         var img = h('img', { src: app.icon, alt: '' });
         img.onerror = useMonogram;
         img.onload = function () {
-            var col = colors[app.id] || analyze(img);
-            colors[app.id] = col || { bg: null, glow: fallback };
-            if (col && col.bg) box.style.background = css(col.bg);
-            else box.classList.add('small'); // icône détourée : plus petite, sur fond sombre
+            // Mode « uniform tiles » de CleanYourTV : la carte prend le support de l'icône
+            // (ou un dégradé de sa couleur), l'icône occupe 62 % de la hauteur.
+            var col = TC.artwork.analyze(img);
+            if (col) {
+                colors[app.id] = { bg: col.backdrop[0], glow: col.glow };
+                box.style.background = 'linear-gradient(180deg,' + css(col.backdrop[0]) + ',' + css(col.backdrop[1]) + ')';
+            } else {
+                colors[app.id] = { bg: null, glow: fallback };
+            }
+            box.classList.add('uniform');
             if (TC.ui.colorReady) TC.ui.colorReady(app.id);
         };
         box.appendChild(img);
@@ -106,7 +112,7 @@
     }
 
     function glowOf(app) {
-        var c = colors[app.id];
+        var c = colors[app.id + '|pack'] && logoFor(app) && TC.store.get().logoStyle !== 'samsung' ? colors[app.id + '|pack'] : colors[app.id];
         return (c && (c.glow || c.bg)) || hslToRgb(hue(app.name), 45, 32);
     }
 
@@ -126,13 +132,11 @@
         paint: function (rgb) {
             if (!this.layers) this.layers = doc.querySelectorAll('#ambient .glow');
             if (!this.layers.length) return;
-            // Une couleur sombre (bleu nuit de Disney+) donnerait un halo invisible : on l'éclaircit.
-            var max = Math.max(rgb[0], rgb[1], rgb[2], 1);
-            var k = max < 210 ? Math.min(210 / max, 3) : 1;
-            rgb = rgb.map(function (v) { return Math.min(255, Math.round(v * k)); });
+            // Même dégradé que CleanYourTV (setAmbient) : centre à 32 % / 42 %, rayon 62 % de la largeur,
+            // alpha 0x5C puis 0x26 à mi-chemin.
             var next = this.layers[1 - this.current];
             next.style.background =
-                'radial-gradient(ellipse 62% 72% at 30% 40%, ' + css(rgb, 0.62) + ' 0%, ' + css(rgb, 0.22) + ' 42%, rgba(0,0,0,0) 78%)';
+                'radial-gradient(circle 74.4rem at 32% 42%, ' + css(rgb, 0.36) + ' 0%, ' + css(rgb, 0.15) + ' 45%, rgba(0,0,0,0) 100%)';
             next.classList.add('on');
             this.layers[this.current].classList.remove('on');
             this.current = 1 - this.current;
@@ -152,5 +156,5 @@
         }, ms || 2600);
     }
 
-    TC.ui = { h: h, appArt: appArt, glowOf: glowOf, ambient: ambient, hslToRgb: hslToRgb, toast: toast };
+    TC.ui = { h: h, appArt: appArt, logoFor: logoFor, glowOf: glowOf, ambient: ambient, hslToRgb: hslToRgb, toast: toast };
 })(this);

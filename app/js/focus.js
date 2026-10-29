@@ -49,12 +49,13 @@
         var smooth = doc.body.getAttribute('data-anim') !== 'off';
         var track = scrollParent(el, 'x');
         if (track) {
-            var tr = track.getBoundingClientRect();
-            var er = el.getBoundingClientRect();
-            var pad = 96;
+            // Défilement carte par carte : les cartes visibles restent entières.
+            // offsetLeft/offsetWidth ignorent le zoom de la carte sélectionnée.
+            var pad = parseFloat(global.getComputedStyle(track).paddingLeft) || 0;
+            var x = el.offsetLeft - track.offsetLeft;
             var left = track.scrollLeft;
-            if (er.left < tr.left + pad) left += er.left - tr.left - pad;
-            else if (er.right > tr.right - pad) left += er.right - tr.right + pad;
+            if (x - pad < left) left = x - pad;
+            else if (x + el.offsetWidth + pad > left + track.clientWidth) left = x + el.offsetWidth + pad - track.clientWidth;
             if (left !== track.scrollLeft) scrollTo(track, { left: Math.max(0, left) }, smooth);
         }
         var pane = scrollParent(el, 'y');
@@ -63,7 +64,7 @@
             var box = el.closest('[data-scroll-anchor]') || el;
             var br = box.getBoundingClientRect();
             var top = pane.scrollTop;
-            var margin = 40;
+            var margin = 90; // de la place pour le nom affiché sous la carte
             if (br.top < pr.top + margin) top += br.top - pr.top - margin;
             else if (br.bottom > pr.bottom - margin) top += br.bottom - pr.bottom + margin;
             if (top !== pane.scrollTop) scrollTo(pane, { top: Math.max(0, top) }, smooth);
