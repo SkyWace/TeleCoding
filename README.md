@@ -41,27 +41,29 @@ La météo est la seule fonction qui sort sur Internet. Elle interroge l'API gra
 
 ## Installation (PC Windows)
 
+Toutes les commandes se lancent dans PowerShell, depuis le dossier du dépôt. Le `.\` devant est obligatoire.
+
 Prérequis, déjà en place : Tizen Studio dans `C:\tizen-studio`, TV en mode développeur avec l'IP du PC (`192.168.1.119`), TV en `192.168.1.129`.
 
 1. **Trouver la TV et vérifier le mode développeur**
-   ```bat
-   find-tv
+   ```powershell
+   .\find-tv
    ```
-2. **Certificat Samsung** (une seule fois) : Tizen Studio → *Tools → Certificate Manager* → **+** → *Samsung* → *TV*, puis connexion au compte Samsung. Ajoute le **DUID** de la TV, que `install` affiche à l'étape 2. Donne au profil un nom, par exemple `TeleCoding`.
+2. **Certificat Samsung** (une seule fois) : Tizen Studio → *Tools → Certificate Manager* → **+** → *Samsung* → *TV*, puis connexion au compte Samsung. Ajoute le **DUID** de la TV, que `.\install` affiche à l'étape 2. Donne au profil un nom, par exemple `TeleCoding`.
 3. **Compiler, signer, installer, lancer, vérifier**
-   ```bat
-   install -Profile TeleCoding
+   ```powershell
+   .\install -Profile TeleCoding
    ```
 4. **Démarrage automatique** (manuel, aucun script ne touche aux réglages de la TV) : *Réglages → Général et confidentialité → Options d'écran de démarrage →* « Exécution auto. de la dernière appli ». Ensuite, éteins la TV pendant que TeleCoding est ouvert.
 
-Une autre IP ? `install -Ip 192.168.1.xx`, ou la variable `TELECODING_TV_IP`. Tizen Studio ailleurs ? Variable `TIZEN_HOME`.
+Une autre IP ? `.\install -Ip 192.168.1.xx`, ou la variable `TELECODING_TV_IP`. Tizen Studio ailleurs ? Variable `TIZEN_HOME`.
 
 ## Revenir à l'état d'origine : `restore-original-home`
 
-```bat
-restore-original-home
+```powershell
+.\restore-original-home
 ```
-(depuis PowerShell : `.\restore-original-home`)
+(dans l'invite `cmd`, sans le `.\` : `restore-original-home`)
 
 - TeleCoding n'a **jamais** modifié, désactivé ni supprimé le Smart Hub ou une appli Samsung. L'accueil d'origine est intact.
 - Le script désinstalle TeleCoding après confirmation. Avec `-KeepApp`, il le garde. Avec `-Yes`, il ne pose pas de questions.
