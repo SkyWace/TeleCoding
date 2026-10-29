@@ -84,7 +84,9 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
     check(await count(page, '#ambient .glow.on') === 1, 'halo d’ambiance allumé');
     const arteBg = await page.$eval('#dock [data-app="aLlph042JZ.arte"] .art', (e) => e.style.background);
     check(/rgb\(25\d, 7\d, 2\d\)/.test(arteBg), 'carte teintée à la couleur de l’icône (' + arteBg + ')');
-    if (SHOTS) await page.screenshot({ path: path.resolve(__dirname, '../docs/accueil.png') });
+    check(await count(page, '#dock [data-app="org.tizen.netflix-app"] .art.logo svg') === 1, 'logo Netflix du pack');
+    check(await count(page, '#dock [data-app="aLlph042JZ.arte"] .art.uniform') === 1, 'ARTE : icône Samsung en mode « uniform tiles »');
+        if (SHOTS) await page.screenshot({ path: path.resolve(__dirname, '../docs/accueil.png') });
 
     console.log('Navigation');
     const first = f.app;
@@ -206,7 +208,12 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
     const before = await firstRow();
     await press(page, 'Enter');
     check(await firstRow() !== before, 'ordre des rangées inversé (' + before + ' → ' + (await firstRow()) + ')');
-    check(await focusSetting(page, 'Applis système'), 'ligne « Applis système »');
+    check(await focusSetting(page, 'Ordre des applis'), 'ligne « Ordre des applis »');
+    await page.evaluate(() => TC.store.set({ launches: { 'rJeHak5zRg.Spotify': 3 } }));
+    await press(page, 'ArrowRight');
+    check(await page.$eval('#sections [data-app]', (e) => e.getAttribute('data-app')) === 'rJeHak5zRg.Spotify', 'tri « les plus utilisées » : Spotify en premier');
+    await press(page, 'ArrowRight');
+        check(await focusSetting(page, 'Applis système'), 'ligne « Applis système »');
     await press(page, 'ArrowRight');
     const withSystem = await count(page, '#sections [data-app]');
     check(withSystem > 9, 'applis système affichées sur demande (' + withSystem + ')');

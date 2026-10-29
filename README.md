@@ -109,5 +109,5 @@ npm install && npm test
 
 ### État des tests
 
-- ✅ **Interface, dans Chromium avec API simulées** : 69 vérifications (navigation, halo, titre, lancement, menu des entrées, HDMI, favoris, masquage, paramètres, persistance, migration, aucune erreur JS).
+- ✅ **Interface, dans Chromium avec API simulées** : 73 vérifications (navigation, logos, halo, titre, lancement, menu des entrées, HDMI, favoris, masquage, paramètres, persistance, migration, aucune erreur JS).
 - ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).
