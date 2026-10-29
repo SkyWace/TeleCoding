@@ -12,7 +12,7 @@ Le design reprend celui du launcher Android [CleanYourTV](https://github.com/Gat
 
 Une partie de leur code est transposée en JavaScript : `app/js/artwork.js` reprend leur mode « uniform tiles » (`AppAdapter.java`), qui donne à chaque carte la couleur du support de l'icône et au halo sa couleur dominante. Les couleurs et arrondis viennent de leurs fichiers `pill_bg.xml`, `glass_panel.xml`, `tile_bg.xml` et `DockDecoration.java`, la police Outfit aussi. Licences : [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-**Logos :** pour 17 marques (Netflix, YouTube, Spotify, Apple TV, Apple Music, Crunchyroll, Rakuten TV, Orange TV, Plex, Kodi, Twitch, Deezer…), TeleCoding affiche un logo net tiré de [Simple Icons](https://simpleicons.org). Les autres applis gardent leur icône Samsung. *Paramètres ▸ Logos des applis* permet de revenir aux icônes Samsung partout.
+**Logos :** 16 applis ont leur **vrai logo** en grande bannière, comme sur Android TV : Netflix, YouTube, Prime Video, Disney+, Spotify, ARTE, CANAL+, Crunchyroll, Apple TV, Apple Music, Xbox, Amazon Luna, Orange TV, Pluto TV, Samsung TV Plus et Internet. Les logos viennent de Wikimedia Commons, uniquement ceux sous licence libre (voir [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). D'autres marques ont un logo simplifié tiré de [Simple Icons](https://simpleicons.org), et le reste garde son icône Samsung, sur une carte à sa couleur. *Paramètres ▸ Logos des applis* permet de revenir aux icônes Samsung partout.
 
 ## Ce qu'il faut savoir sur cette TV
 
@@ -95,7 +95,8 @@ app/              appli Tizen (config.xml, index.html, css/, js/, fonts/)
   js/focus.js     navigation spatiale à la télécommande
   js/ui.js        cartes, logos, halo
   js/artwork.js   couleurs des icônes (portage de CleanYourTV)
-  js/logos.js     pack de logos (généré par tools/build-logos.py)
+  js/logos.js     logos simplifiés (généré par tools/build-logos.py)
+  js/banners.js   bannières à logo officiel (fichiers dans app/logos/)
   js/app.js       écran d'accueil, menus, paramètres, touches
 scripts/          find-tv, deploy, restore-original-home (PowerShell)
 tests/            test de l'interface au clavier (Playwright)
@@ -109,5 +110,5 @@ npm install && npm test
 
 ### État des tests
 
-- ✅ **Interface, dans Chromium avec API simulées** : 73 vérifications (navigation, logos, halo, titre, lancement, menu des entrées, HDMI, favoris, masquage, paramètres, persistance, migration, aucune erreur JS).
+- ✅ **Interface, dans Chromium avec API simulées** : 75 vérifications (navigation, logos, halo, titre, lancement, menu des entrées, HDMI, favoris, masquage, paramètres, persistance, migration, aucune erreur JS).
 - ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).

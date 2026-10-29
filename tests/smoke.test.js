@@ -75,24 +75,27 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
     check(/^Bon(jour|soir)$/.test(await page.textContent('#greeting')), 'salutation');
     check(await count(page, '#dock [data-app]') === 8, 'premier lancement : 8 favoris dans la bande');
     const ids = await page.$$eval('#sections [data-app]', (els) => els.map((e) => e.getAttribute('data-app')));
-    check(ids.length === 10, '10 vraies applis sur 22 entrées');
+    check(ids.length === 18, '18 vraies applis sur 30 entrées');
     check(!ids.some((id) => /adplayer|network-status|rm-survey|Service$|preview$|emanual|OTApp|dummy/i.test(id)), 'services système masqués');
     check(ids.includes('9Ur5IzDKqV.TizenYouTube') && !ids.includes('com.samsung.tv.cobalt-yt'), 'YouTube en double fusionné');
     let f = await focused(page);
     check(f && f.row === 'favorites', 'focus initial sur le premier favori');
     check(await hero(page) === '6play', 'grand titre = appli sélectionnée');
     check(await count(page, '#ambient .glow.on') === 1, 'halo d’ambiance allumé');
-    const arteBg = await page.$eval('#dock [data-app="aLlph042JZ.arte"] .art', (e) => e.style.background);
-    check(/rgb\(25\d, 7\d, 2\d\)/.test(arteBg), 'carte teintée à la couleur de l’icône (' + arteBg + ')');
-    check(await count(page, '#dock [data-app="org.tizen.netflix-app"] .art.logo svg') === 1, 'logo Netflix du pack');
-    check(await count(page, '#dock [data-app="aLlph042JZ.arte"] .art.uniform') === 1, 'ARTE : icône Samsung en mode « uniform tiles »');
+    const sixBg = await page.$eval('#dock [data-app="Ol7HVEXtqh.6play"] .art', (e) => e.style.background);
+    check(/linear-gradient/.test(sixBg), 'carte teintée à la couleur de l’icône (' + sixBg + ')');
+    check(await count(page, '[data-app="org.tizen.netflix-app"] .art.banner img[src="logos/netflix.svg"]') === 1, 'Netflix : logo officiel');
+    check(await count(page, '[data-app="rJeHak5zRg.Spotify"] .art.banner') === 1, 'Spotify : logo officiel');
+    check(await count(page, '#dock [data-app="Ol7HVEXtqh.6play"] .art.uniform') === 1, '6play : icône Samsung en mode « uniform tiles »');
+    const broken = await page.$$eval('.art.banner img', (els) => els.filter((i) => !i.complete || !i.naturalWidth).length);
+    check(broken === 0, 'tous les logos officiels se chargent');
         if (SHOTS) await page.screenshot({ path: path.resolve(__dirname, '../docs/accueil.png') });
 
     console.log('Navigation');
     const first = f.app;
     await press(page, 'ArrowRight', 2);
     await page.waitForTimeout(300);
-    check((await focused(page)).app === 'MCmYXNxgcu.DisneyPlus' && await hero(page) === 'Disney+', 'droite : Disney+, le titre suit');
+    check((await focused(page)).app === 'org.tizen.apple.apple-music' && await hero(page) === 'Apple Music', 'droite : Apple Music, le titre suit');
     if (SHOTS) {
         await page.waitForTimeout(900);
         await page.screenshot({ path: path.resolve(__dirname, '../docs/accueil-disney.png') });
@@ -179,7 +182,7 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
     check(await until(page, 'ArrowDown', (x) => x.text === 'Masquer cette appli', 6), 'option « Masquer cette appli »');
     await press(page, 'Enter');
     await page.waitForTimeout(100);
-    check(await count(page, '#sections [data-app]') === 9, 'appli masquée');
+    check(await count(page, '#sections [data-app]') === 17, 'appli masquée');
 
     console.log('Paramètres');
     await until(page, 'ArrowUp', (x) => x.row === 'header', 6);
@@ -216,12 +219,12 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
         check(await focusSetting(page, 'Applis système'), 'ligne « Applis système »');
     await press(page, 'ArrowRight');
     const withSystem = await count(page, '#sections [data-app]');
-    check(withSystem > 9, 'applis système affichées sur demande (' + withSystem + ')');
+    check(withSystem > 17, 'applis système affichées sur demande (' + withSystem + ')');
     await press(page, 'ArrowRight');
-    check(await count(page, '#sections [data-app]') === 9, 'applis système de nouveau masquées');
+    check(await count(page, '#sections [data-app]') === 17, 'applis système de nouveau masquées');
     check(await focusSetting(page, 'Applis masquées'), 'ligne « Applis masquées »');
     await press(page, 'Enter');
-    check(await count(page, '#sections [data-app]') === 10, 'applis masquées réaffichées');
+    check(await count(page, '#sections [data-app]') === 18, 'applis masquées réaffichées');
     await press(page, 'Escape');
     await page.waitForTimeout(200);
     check(await page.isHidden('#overlay'), 'Retour ferme les paramètres');

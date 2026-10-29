@@ -79,9 +79,46 @@
         return box;
     }
 
+    // Bannière à logo officiel (app/logos/) correspondant au nom de l'appli, ou null.
+    function bannerFor(app) {
+        var banners = TC.BANNERS || {};
+        var n = normName(app.name);
+        var keys = Object.keys(banners);
+        for (var i = 0; i < keys.length; i++) {
+            if (banners[keys[i]].names.indexOf(n) >= 0) return { key: keys[i], b: banners[keys[i]] };
+        }
+        return null;
+    }
+
+    function bannerArt(app, found) {
+        var b = found.b;
+        var box = h('div', { class: 'art banner' });
+        box.style.background = b.bg;
+        var img = h('img', { src: 'logos/' + found.key + '.svg', alt: '' });
+        var size = (b.size || 0.5) * 100;
+        if (b.rotate) {
+            // Logo vertical (ARTE) : une fois tourné, sa largeur devient sa hauteur à l'écran.
+            // size est alors une part de la largeur de la carte.
+            img.style.width = size + '%';
+            img.style.maxHeight = 'none';
+            img.style.transform = 'rotate(90deg)';
+        } else {
+            img.style.height = size + '%'; // la largeur suit les proportions du logo, bornée à 76 %
+        }
+        if (b.white) img.style.filter = 'brightness(0) invert(1)';
+        img.onerror = function () { box.innerHTML = ''; box.appendChild(h('span', { class: 'label', text: app.name })); };
+        box.appendChild(img);
+        colors[app.id + '|pack'] = { bg: b.glow, glow: b.glow };
+        return box;
+    }
+
     function appArt(app, style) {
-        var logo = style !== 'samsung' ? logoFor(app) : null;
-        if (logo) return logoArt(app, logo);
+        if (style !== 'samsung') {
+            var banner = bannerFor(app);
+            if (banner) return bannerArt(app, banner);
+            var logo = logoFor(app);
+            if (logo) return logoArt(app, logo);
+        }
         var box = h('div', { class: 'art' });
         var fallback = hslToRgb(hue(app.name), 45, 32);
         function useMonogram() {
@@ -112,7 +149,7 @@
     }
 
     function glowOf(app) {
-        var c = colors[app.id + '|pack'] && logoFor(app) && TC.store.get().logoStyle !== 'samsung' ? colors[app.id + '|pack'] : colors[app.id];
+        var c = colors[app.id + '|pack'] && (bannerFor(app) || logoFor(app)) && TC.store.get().logoStyle !== 'samsung' ? colors[app.id + '|pack'] : colors[app.id];
         return (c && (c.glow || c.bg)) || hslToRgb(hue(app.name), 45, 32);
     }
 

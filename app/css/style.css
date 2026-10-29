@@ -201,6 +201,7 @@ body.ready #app { opacity: 1; }
 }
 .tile .art img { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
 .tile .art.uniform img { height: 62%; } /* ICON_SHARE de CleanYourTV */
+.tile .art.banner img { height: auto; width: auto; max-width: 76%; object-fit: contain; }
 .tile .art.logo { gap: 0.55em; font-size: calc(var(--tile-h) * 0.2); padding: 0 0.8em; box-sizing: border-box; }
 .tile .art.logo svg { height: 1.55em; width: 1.55em; flex: 0 0 auto; }
 .tile .art.logo .brand {
@@ -210,7 +211,8 @@ body.ready #app { opacity: 1; }
 .tile .art.logo .brand.caps { text-transform: uppercase; font-weight: 700; letter-spacing: 0.02em; }
 .tile::after {
     content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit;
-    box-shadow: 0 0 0 0.3rem rgba(255, 255, 255, 0.92), 0 1.4rem 3.6rem rgba(0, 0, 0, 0.55);
+    /* anneau blanc, plus un fin liseré sombre pour qu'il se voie aussi sur une carte blanche */
+    box-shadow: 0 0 0 0.3rem rgba(255, 255, 255, 0.92), 0 0 0 0.45rem rgba(0, 0, 0, 0.3), 0 1.4rem 3.6rem rgba(0, 0, 0, 0.55);
     opacity: 0;
     transition: opacity var(--dur) ease;
     pointer-events: none;

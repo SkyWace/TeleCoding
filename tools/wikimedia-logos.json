@@ -1,0 +1,98 @@
+{
+ "netflix": {
+  "file": "Netflix 2015 logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Netflix_2015_logo.svg",
+  "local": "app/logos/netflix.svg"
+ },
+ "youtube": {
+  "file": "YouTube Logo 2017.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:YouTube_Logo_2017.svg",
+  "local": "app/logos/youtube.svg"
+ },
+ "primevideo": {
+  "file": "Amazon Prime Video logo (2024).svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Amazon_Prime_Video_logo_(2024).svg",
+  "local": "app/logos/primevideo.svg"
+ },
+ "disneyplus": {
+  "file": "Disney+ logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Disney+_logo.svg",
+  "local": "app/logos/disneyplus.svg"
+ },
+ "spotify": {
+  "file": "Spotify logo with text.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Spotify_logo_with_text.svg",
+  "local": "app/logos/spotify.svg"
+ },
+ "arte": {
+  "file": "Arte Logo 2017.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Arte_Logo_2017.svg",
+  "local": "app/logos/arte.svg"
+ },
+ "canalplus": {
+  "file": "Logo Canal+ 1995.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Logo_Canal+_1995.svg",
+  "local": "app/logos/canalplus.svg"
+ },
+ "crunchyroll": {
+  "file": "Crunchyroll Logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Crunchyroll_Logo.svg",
+  "local": "app/logos/crunchyroll.svg"
+ },
+ "appletv": {
+  "file": "Apple TV logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Apple_TV_logo.svg",
+  "local": "app/logos/appletv.svg"
+ },
+ "applemusic": {
+  "file": "Apple Music logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Apple_Music_logo.svg",
+  "local": "app/logos/applemusic.svg"
+ },
+ "xbox": {
+  "file": "Xbox logo (2019).svg",
+  "license": "PD-Textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Xbox_logo_(2019).svg",
+  "local": "app/logos/xbox.svg"
+ },
+ "orangetv": {
+  "file": "Orange logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Orange_logo.svg",
+  "local": "app/logos/orangetv.svg"
+ },
+ "luna": {
+  "file": "Amazon Luna logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Amazon_Luna_logo.svg",
+  "local": "app/logos/luna.svg"
+ },
+ "tvplus": {
+  "file": "Samsung TV Plus logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Samsung_TV_Plus_logo.svg",
+  "local": "app/logos/tvplus.svg"
+ },
+ "samsunginternet": {
+  "file": "Samsung Internet logo.svg",
+  "license": "pd-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Samsung_Internet_logo.svg",
+  "local": "app/logos/samsunginternet.svg"
+ },
+ "plutotv": {
+  "file": "Pluto TV logo.svg",
+  "license": "PD-textlogo",
+  "url": "https://commons.wikimedia.org/wiki/File:Pluto_TV_logo.svg",
+  "local": "app/logos/plutotv.svg"
+ }
+}

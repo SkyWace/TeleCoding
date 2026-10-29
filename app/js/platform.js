@@ -213,7 +213,11 @@
         ['org.tizen.browser', 'Internet'], ['OGLLvqej7u.service', 'service'],
         ['org.tizen.rm-network-status', ' Network status widget '], ['org.tizen.rm-survey', ' RM survey popup '],
         ['com.samsung.tv.adplayer', 'AdPlayer'], ['com.samsung.tv.targeted-ad-service', 'Targeted Advertisment Service'],
-        ['25emanual2.emanual', 'User Guide'], ['w2VwCK465D.OTApp', 'Samsung TV Plus Privacy Settings']
+        ['25emanual2.emanual', 'User Guide'], ['w2VwCK465D.OTApp', 'Samsung TV Plus Privacy Settings'],
+        ['com.samsung.tv.aria-video', 'Apple TV'], ['org.tizen.apple.apple-music', 'Apple Music'],
+        ['QmpwflxWdt.CanalPlusLauncher', 'CANAL+'], ['GHI3a0zMSx.XboxGamePass', 'Xbox'],
+        ['CmeyUlnhYY.LunaWebApp', 'Amazon Luna'], ['HEPsqFNie0.tvplusstandalone', 'Samsung TV Plus'],
+        ['OGLLvqej7u.CrunchyrollWebApp', 'Crunchyroll'], ['eG4XpSuhpX.OrangeTV', 'Orange TV']
     ];
     // Icônes d'aperçu dessinées à la volée (couleurs de marque approximatives), pour juger le rendu.
     var MOCK_ICONS = {
