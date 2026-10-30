@@ -48,6 +48,11 @@
         'com.samsung.tv.store'
     ];
 
+    var SYSTEM_APPS = {
+        settings: ['com.samsung.tv.coba.setting', 'org.tizen.menu'],
+        network: ['com.samsung.tv.coba.setting.networksettings', 'org.tizen.NetworkSetting-Tizen']
+    };
+
     function isUserApp(id) {
         if (/-dummy$/.test(id)) return false;
         if (BUILTIN_APPS.indexOf(id) >= 0) return true;
@@ -174,11 +179,26 @@
             return promisify(function (ok, ko) { tz.tvwindow.hide(ok, ko, 'MAIN'); });
         },
 
-        // 'WIFI', 'ETHERNET', 'NONE'…
-        networkType: function () {
+        // { type: 'WIFI' | 'ETHERNET' | 'NONE' | …, ssid: nom du Wi-Fi si la TV le donne }
+        network: function () {
             if (!tz.systeminfo) return Promise.reject(new Error('systeminfo absent'));
-            return promisify(function (ok, ko) { tz.systeminfo.getPropertyValue('NETWORK', ok, ko); })
-                .then(function (n) { return n.networkType; });
+            return promisify(function (ok, ko) { tz.systeminfo.getPropertyValue('NETWORK', ok, ko); }).then(function (n) {
+                var out = { type: n.networkType, ssid: '' };
+                if (n.networkType !== 'WIFI') return out;
+                return promisify(function (ok, ko) { tz.systeminfo.getPropertyValue('WIFI_NETWORK', ok, ko); })
+                    .then(function (w) { out.ssid = (w && w.ssid) || ''; return out; })
+                    .catch(function () { return out; });
+            });
+        },
+
+        // Réglages de la TV : Samsung ne documente pas comment les ouvrir depuis une appli.
+        // On essaie les applis de réglages présentes sur ce modèle (relevées avec « sdb shell 0 applist »).
+        openSystem: function (kind) {
+            var ids = SYSTEM_APPS[kind] || [];
+            var self = this;
+            return ids.reduce(function (p, id) {
+                return p.catch(function () { return self.launchApp(id); });
+            }, Promise.reject(new Error('aucune')));
         },
 
         registerKeys: function () {
@@ -272,7 +292,8 @@
             this.watching = null;
             return Promise.resolve();
         },
-        networkType: function () { return Promise.resolve(global.navigator.onLine === false ? 'NONE' : 'WIFI'); },
+        network: function () { return Promise.resolve({ type: global.navigator.onLine === false ? 'NONE' : 'WIFI', ssid: 'Maison' }); },
+        openSystem: function () { return Promise.resolve(); },
         registerKeys: function () { /* le clavier du PC suffit */ },
         exit: function () { /* rien à fermer dans un navigateur */ }
     };

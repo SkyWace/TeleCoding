@@ -1,7 +1,9 @@
 /*
- * TeleCoding : écran d'accueil.
- * Modèle = TC.store (préférences) + état en mémoire (applis, entrées).
- * Vue = en-tête, grand titre, bande des favoris, rangées dessous ; contrôleur = touches.
+ * TeleCoding : écran d'accueil, transposé du launcher CleanYourTV (MIT) pour Samsung Tizen.
+ *
+ * Modèle (comme CleanYourTV) : une seule liste ordonnée d'applis, `home`. Les `cols` premières
+ * forment la bande (le dock), les suivantes la grille. Les autres sont dans la bibliothèque
+ * d'applications. Une appli nouvellement installée s'ajoute à la fin de l'accueil.
  */
 (function (global) {
     'use strict';
@@ -18,21 +20,51 @@
         appsLoaded: false,
         inputs: [],
         inputsError: null,
-        moving: null,      // id de l'appli en cours de déplacement
-        watching: null,    // entrée affichée en plein écran
+        network: null,
+        reorder: null,     // { held: id | null } pendant « Réorganiser les applis »
+        watching: null,    // source affichée en plein écran
         overlay: null,     // fenêtre ouverte
         weather: null
     };
 
     var LONG_PRESS_MS = 650;
 
+    // Textes repris de la traduction française de CleanYourTV (values-fr/strings.xml).
+    var T = {
+        inputs: 'Sources',
+        settings: 'Paramètres',
+        connected: 'Connecté',
+        liveTv: 'TV en direct',
+        noInputs: 'Aucune source trouvée',
+        notAvailable: 'Indisponible sur cette TV',
+        offline: 'Hors ligne',
+        ethernet: 'Ethernet',
+        wifi: 'Wi-Fi',
+        tvSettings: 'Paramètres du téléviseur',
+        network: 'Réseau',
+        launcherSettings: 'Paramètres du lanceur',
+        reorder: 'Réorganiser les applis',
+        reorderHint: 'OK prend une appli, les flèches la déplacent, Retour la pose. Retour à nouveau pour terminer.',
+        move: 'Déplacer',
+        library: 'Bibliothèque d’applications',
+        libraryHintAdd: 'Appuyer : ajouter à Accueil · Maintenir : options',
+        libraryEmpty: 'Aucune application à ouvrir',
+        onHome: 'Sur l’accueil',
+        addHome: 'Ajouter à l’accueil',
+        removeHome: 'Retirer de l’accueil',
+        open: 'Ouvrir',
+        columns: 'Applications par ligne',
+        followTheme: 'Suivre le thème (réinitialiser les choix)',
+        cantOpen: 'Impossible d’ouvrir '
+    };
+
     var THEMES = [
         { id: 'ambiance', label: 'Ambiance (couleur de l’appli)' },
+        { id: 'noir', label: 'Noir' },
+        { id: 'oled', label: 'Noir OLED' },
         { id: 'minuit', label: 'Minuit', glow: [48, 86, 190] },
         { id: 'ambre', label: 'Ambre', glow: [190, 104, 36] },
-        { id: 'emeraude', label: 'Émeraude', glow: [20, 140, 120] },
-        { id: 'noir', label: 'Noir profond' },
-        { id: 'oled', label: 'Noir OLED' }
+        { id: 'emeraude', label: 'Émeraude', glow: [20, 140, 120] }
     ];
     var WALLPAPERS = [
         { id: 'none', label: 'Aucun' },
@@ -43,15 +75,20 @@
     ];
     var ANIMATIONS = [
         { id: 'off', label: 'Désactivées' },
-        { id: 'subtle', label: 'Discrètes' },
-        { id: 'normal', label: 'Normales' }
+        { id: 'subtle', label: 'Activées' },
+        { id: 'normal', label: 'Effets avancés' }
     ];
-    var COLS = [{ id: 4, label: '4' }, { id: 5, label: '5' }, { id: 6, label: '6' }];
+    var COLS = [{ id: 4, label: '4' }, { id: 5, label: '5' }, { id: 6, label: '6' }, { id: 7, label: '7' }];
 
     var ICONS = {
         hdmi: '<svg viewBox="0 0 24 24"><path d="M7 3h10v6l-1.5 2v6.5a1.5 1.5 0 0 1-1.5 1.5h-4a1.5 1.5 0 0 1-1.5-1.5V11L7 9z"/></svg>',
         tv: '<svg viewBox="0 0 24 24"><path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm1 2v8h14V8zM8 2.5l4 3 4-3 .9 1.2L13.2 6h-2.4L7.1 3.7zM8 20h8v1.5H8z"/></svg>',
-        av: '<svg viewBox="0 0 24 24"><path d="M5 3h2v6h1.5v4H7v8H5v-8H3.5V9H5zm6 0h2v10h1.5v4H13v4h-2v-4H9.5v-4H11zm6 0h2v4h1.5v4H19v10h-2V11h-1.5V7H17z"/></svg>'
+        av: '<svg viewBox="0 0 24 24"><path d="M5 3h2v6h1.5v4H7v8H5v-8H3.5V9H5zm6 0h2v10h1.5v4H13v4h-2v-4H9.5v-4H11zm6 0h2v4h1.5v4H19v10h-2V11h-1.5V7H17z"/></svg>',
+        gear: '<svg viewBox="0 0 24 24"><path d="M19.1 12.9a7 7 0 0 0 0-1.8l2-1.5-2-3.4-2.3.9a7 7 0 0 0-1.6-.9L14.9 3.8h-3.8l-.3 2.4a7 7 0 0 0-1.6.9l-2.3-.9-2 3.4 2 1.5a7 7 0 0 0 0 1.8l-2 1.5 2 3.4 2.3-.9c.5.4 1 .7 1.6.9l.3 2.4h3.8l.3-2.4c.6-.2 1.1-.5 1.6-.9l2.3.9 2-3.4zM13 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4z" transform="translate(-1 0)"/></svg>',
+        wifi: '<svg viewBox="0 0 24 24"><path d="M12 19.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zM6.3 13.6l1.6 1.6a5.8 5.8 0 0 1 8.2 0l1.6-1.6a8.1 8.1 0 0 0-11.4 0zM3 10.3l1.6 1.6a10.5 10.5 0 0 1 14.8 0l1.6-1.6a12.8 12.8 0 0 0-18 0z"/></svg>',
+        apps: '<svg viewBox="0 0 24 24"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>',
+        swap: '<svg viewBox="0 0 24 24"><path d="M8 3 4 7h3v7h2V7h3zm9 14V10h-2v7h-3l4 4 4-4z"/></svg>',
+        home: '<svg viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></svg>'
     };
 
     function themeOf(id) {
@@ -83,15 +120,25 @@
     /* ------------------------------------------------------------------ */
     /* Horloge, date, météo, réseau                                        */
     /* ------------------------------------------------------------------ */
+    // Mêmes tranches horaires que CleanYourTV (MainActivity, langues par défaut).
+    function greetingFor(hour) {
+        if (hour < 5) return 'Bonne nuit';
+        if (hour < 12) return 'Bonjour';
+        if (hour < 17) return 'Bon après-midi';
+        if (hour < 22) return 'Bonsoir';
+        return 'Bonne nuit';
+    }
+
     function tick() {
         var s = store.get();
         var now = new Date();
         var hh = now.getHours();
         var mm = ('0' + now.getMinutes()).slice(-2);
-        doc.getElementById('greeting').textContent = hh >= 5 && hh < 18 ? 'Bonjour' : 'Bonsoir';
+        doc.getElementById('greeting').textContent = greetingFor(hh);
         doc.getElementById('time').innerHTML = s.clock24
             ? ('0' + hh).slice(-2) + ':' + mm
             : ((hh % 12) || 12) + ':' + mm + '<small>' + (hh < 12 ? 'AM' : 'PM') + '</small>';
+        // date_format de CleanYourTV en français : « EEEE d MMMM ».
         doc.getElementById('date').textContent =
             now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     }
@@ -138,59 +185,55 @@
         });
     }
 
-    var NETWORK_LABELS = { WIFI: 'Wi-Fi', ETHERNET: 'Ethernet', NONE: 'Hors ligne' };
+    // Pastille réseau : nom du Wi-Fi quand la TV le donne, sinon Wi-Fi / Ethernet / Hors ligne.
     function refreshNetwork() {
-        platform.networkType().then(function (t) {
-            state.network = t;
-            doc.getElementById('net-label').textContent = NETWORK_LABELS[t] || 'Réseau';
+        platform.network().then(function (n) {
+            state.network = n;
+            var label = n.type === 'NONE' ? T.offline : n.type === 'ETHERNET' ? T.ethernet : (n.ssid || T.wifi);
+            doc.getElementById('net-label').textContent = label;
         }).catch(function () { /* on garde « Wi-Fi » */ });
     }
 
     /* ------------------------------------------------------------------ */
-    /* Données : applications et entrées                                   */
+    /* Données : applications et sources                                   */
     /* ------------------------------------------------------------------ */
     function appById(id) {
         for (var i = 0; i < state.apps.length; i++) if (state.apps[i].id === id) return state.apps[i];
         return null;
     }
 
-    // Applis affichées : sans les services système (sauf réglage) ni les applis masquées.
-    function visibleApps() {
+    function homeApps() {
+        return (store.get().home || []).map(appById).filter(Boolean);
+    }
+
+    function isOnHome(id) { return (store.get().home || []).indexOf(id) >= 0; }
+
+    // Construit ou met à jour la liste de l'accueil à partir des applis installées.
+    function syncHome(apps) {
         var s = store.get();
-        var list = state.apps.filter(function (a) {
-            return (s.showSystemApps || !a.system) && s.hiddenApps.indexOf(a.id) < 0;
-        });
-        if (s.appSort === 'usage') {
-            // Les plus lancées d'abord ; à égalité, l'ordre alphabétique reste.
-            list = list.map(function (a, i) { return { a: a, i: i, n: s.launches[a.id] || 0 }; })
-                .sort(function (x, y) { return (y.n - x.n) || (x.i - y.i); })
-                .map(function (x) { return x.a; });
+        var ids = apps.map(function (a) { return a.id; });
+        var user = apps.filter(function (a) { return !a.system; });
+        var home = s.home;
+        if (home === null) {
+            // Premier lancement, ou migration : d'abord les anciens favoris, puis les autres vraies applis.
+            home = (s.favorites || []).filter(function (id) { return ids.indexOf(id) >= 0; });
+            user.forEach(function (a) {
+                if (home.indexOf(a.id) < 0 && s.hiddenApps.indexOf(a.id) < 0) home.push(a.id);
+            });
+        } else if (s.knownApps.length) {
+            // Une appli installée depuis la dernière fois s'ajoute à la fin de l'accueil.
+            user.forEach(function (a) {
+                if (s.knownApps.indexOf(a.id) < 0 && home.indexOf(a.id) < 0) home.push(a.id);
+            });
         }
-        return list;
+        store.set({ home: home, knownApps: ids, appsCache: apps });
     }
-
-    function favorites() {
-        var s = store.get();
-        return (s.favorites || []).map(appById).filter(function (a) {
-            return a && s.hiddenApps.indexOf(a.id) < 0;
-        });
-    }
-
-    function isFavorite(id) { return (store.get().favorites || []).indexOf(id) >= 0; }
 
     function loadApps() {
         return platform.listApps().then(function (apps) {
             state.apps = apps;
             state.appsLoaded = true;
-            store.set({ appsCache: apps });
-            var s = store.get();
-            if (s.favorites === null || s.favoritesVersion < 2) {
-                // Premier lancement (ou favoris choisis avant le tri) : les premières vraies applis.
-                store.set({
-                    favorites: visibleApps().slice(0, 8).map(function (a) { return a.id; }),
-                    favoritesVersion: 2
-                });
-            }
+            syncHome(apps);
         }).catch(function (err) {
             state.appsLoaded = true;
             TC.ui.toast('Impossible de lister les applications (' + platform.errorText(err) + ')', 5000);
@@ -211,107 +254,74 @@
         return Promise.all([loadApps(), loadInputs()]).then(function () { render(); });
     }
 
+    function sourceLabel(src) { return src.type === 'TV' ? T.liveTv : src.label; }
+
     /* ------------------------------------------------------------------ */
-    /* Rendu                                                               */
+    /* Rendu de l'accueil                                                  */
     /* ------------------------------------------------------------------ */
-    function appTile(app, row, showFav) {
+    function appTile(app, row) {
+        var held = state.reorder && state.reorder.held === app.id;
         return h('button', {
-            class: 'tile focusable' + (state.moving === app.id ? ' moving' : ''),
+            class: 'tile focusable' + (held ? ' held' : ''),
             'data-row': row,
             'data-app': app.id
         }, [
             TC.ui.appArt(app, store.get().logoStyle),
-            showFav && isFavorite(app.id) ? h('span', { class: 'fav-dot' }) : null,
-            // Comme CleanYourTV : sous la bande, le nom apparaît sous la carte sélectionnée.
-            row !== 'favorites' ? h('span', { class: 'name', text: app.name }) : null
+            // Sous la bande, le nom apparaît sous la carte sélectionnée.
+            row !== 'dock' ? h('span', { class: 'name', text: app.name }) : null
         ]);
     }
 
-    function inputIcon(type) { return type === 'HDMI' || type === 'DVI' ? ICONS.hdmi : type === 'TV' ? ICONS.tv : ICONS.av; }
-
-    function inputTile(src) {
-        return h('button', {
-            class: 'tile input focusable' + (src.connected ? ' on' : ''),
-            'data-row': 'inputs',
-            'data-input': src.key
-        }, [
-            h('div', { class: 'art' }, [
-                h('span', { html: inputIcon(src.type) }),
-                h('span', { class: 'port', text: src.label }),
-                h('span', { class: 'state', text: src.connected ? 'Connecté' : 'Non connecté' })
-            ])
-        ]);
-    }
-
-    function renderDock() {
+    function renderDock(apps, cols) {
         var dock = doc.getElementById('dock');
-        var track = dock.querySelector('.track');
-        var scroll = track ? track.scrollLeft : 0;
-        var favs = favorites();
-        var tiles = favs.map(function (a) { return appTile(a, 'favorites', false); });
-        if (!state.moving) {
-            tiles.push(h('button', { class: 'tile ghost focusable', 'data-row': 'favorites', 'data-action': 'manage-favorites' }, [
+        var old = dock.querySelector('.track');
+        var scroll = old ? old.scrollLeft : 0;
+        var tiles = apps.slice(0, cols).map(function (a) { return appTile(a, 'dock'); });
+        if (!tiles.length && state.appsLoaded) {
+            tiles.push(h('button', { class: 'tile ghost focusable', 'data-row': 'dock', 'data-action': 'library' }, [
                 h('div', { class: 'art' }, [
-                    h('span', { class: 'plus', text: '+' }),
-                    h('span', { class: 'hint-text', text: favs.length ? 'Gérer les favoris' : 'Ajouter des favoris' })
+                    h('span', { class: 'plus', html: ICONS.apps }),
+                    h('span', { class: 'hint-text', text: T.library })
                 ])
             ]));
         }
         dock.innerHTML = '';
-        var newTrack = h('div', { class: 'track', 'data-scroll': 'x' }, tiles);
-        dock.appendChild(h('div', { class: 'band' }, [newTrack]));
-        if (state.moving) dock.appendChild(h('p', { class: 'note', text: '◀ ▶ pour déplacer · OK pour valider' }));
-        newTrack.scrollLeft = scroll;
+        var track = h('div', { class: 'track', 'data-scroll': 'x' }, tiles);
+        dock.appendChild(h('div', { class: 'band' }, [track]));
+        track.scrollLeft = scroll;
     }
 
-    function renderSections() {
-        var s = store.get();
+    function renderGrid(apps, cols) {
         var main = doc.getElementById('sections');
         main.innerHTML = '';
-        s.sections.forEach(function (id) {
-            if (id === 'inputs' && s.showInputsRow) {
-                var tiles = state.inputs.map(inputTile);
-                if (state.inputsError) {
-                    tiles = [h('button', { class: 'tile ghost focusable', 'data-row': 'inputs', 'data-action': 'inputs-help' }, [
-                        h('div', { class: 'art' }, [h('span', { class: 'hint-text', text: 'Entrées indisponibles · touche SOURCE' })])
-                    ])];
-                }
-                main.appendChild(h('section', { class: 'row-section', 'data-section': 'inputs' }, [
-                    h('h2', { text: 'Entrées' }),
-                    h('div', { class: 'grid' }, tiles)
-                ]));
-            }
-            if (id === 'apps') {
-                var all = visibleApps();
-                var grid = all.map(function (a, i) { return appTile(a, 'apps-' + Math.floor(i / s.cols), true); });
-                if (!all.length && state.appsLoaded) {
-                    grid.push(h('button', { class: 'tile ghost focusable', 'data-row': 'apps-0', 'data-action': 'refresh' }, [
-                        h('div', { class: 'art' }, [h('span', { class: 'plus', text: '↻' }), h('span', { class: 'hint-text', text: 'Aucune appli détectée · Actualiser' })])
-                    ]));
-                }
-                main.appendChild(h('section', { class: 'row-section', 'data-section': 'apps', 'data-count': all.length }, [
-                    h('div', { class: 'grid' }, grid)
-                ]));
-            }
-        });
+        var rest = apps.slice(cols);
+        var grid = rest.map(function (a, i) { return appTile(a, 'row-' + (1 + Math.floor(i / cols))); });
+        main.appendChild(h('section', { class: 'row-section', 'data-section': 'apps' }, [h('div', { class: 'grid' }, grid)]));
+        // Pastille « Bibliothèque d'applications » (show_library_pill de CleanYourTV).
+        main.appendChild(h('div', { class: 'library-pill-row' }, [
+            h('button', { class: 'pill library-pill focusable', 'data-row': 'library', 'data-action': 'library' }, [
+                h('span', { html: ICONS.apps }), h('span', { text: T.library })
+            ])
+        ]));
     }
 
     function focusKey(el) {
         if (!el) return null;
-        if (el.getAttribute('data-app')) return '[data-row="' + el.getAttribute('data-row') + '"][data-app="' + el.getAttribute('data-app') + '"]';
-        if (el.getAttribute('data-input')) return '[data-input="' + el.getAttribute('data-input') + '"]';
-        if (el.getAttribute('data-action')) return '[data-action="' + el.getAttribute('data-action') + '"]';
+        if (el.getAttribute('data-app')) return '#app [data-app="' + el.getAttribute('data-app') + '"]';
+        if (el.getAttribute('data-action')) return '#app [data-action="' + el.getAttribute('data-action') + '"]';
         return null;
     }
 
     function render(focusSelector) {
         var keep = focusSelector || focusKey(TC.focus.current);
-        renderDock();
-        renderSections();
+        var cols = store.get().cols;
+        var apps = homeApps();
+        renderDock(apps, cols);
+        renderGrid(apps, cols);
         if (!state.overlay) TC.focus.restore(keep);
     }
 
-    // Grand titre et halo suivent l'élément sélectionné.
+    // Grand titre et halo suivent l'appli sélectionnée.
     var heroTimer = null;
     function setHero(text) {
         var el = doc.getElementById('hero');
@@ -325,62 +335,82 @@
         if (state.overlay) return;
         var appId = el.getAttribute('data-app');
         var app = appId ? appById(appId) : null;
-        if (app) {
-            setHero(app.name);
-            if (!themeOf(store.get().theme).glow) TC.ui.ambient.set(TC.ui.glowOf(app));
-            return;
-        }
-        var key = el.getAttribute('data-input');
-        if (key) { var src = inputByKey(key); if (src) setHero(src.label); }
+        if (!app) return;
+        setHero(app.name);
+        if (!themeOf(store.get().theme).glow) TC.ui.ambient.set(TC.ui.glowOf(app));
     }
 
     /* ------------------------------------------------------------------ */
     /* Actions                                                             */
     /* ------------------------------------------------------------------ */
     function launch(app) {
-        var launches = Object.assign({}, store.get().launches);
-        launches[app.id] = (launches[app.id] || 0) + 1;
-        store.set({ launches: launches });
         platform.launchApp(app.id).then(function () {
             if (platform.preview) TC.ui.toast('Aperçu : lancement de ' + app.name);
         }).catch(function (err) {
-            TC.ui.toast('Impossible d’ouvrir ' + app.name + ' (' + platform.errorText(err) + ')', 5000);
+            TC.ui.toast(T.cantOpen + app.name + ' (' + platform.errorText(err) + ')', 5000);
         });
     }
 
-    function toggleFavorite(id) {
-        var favs = (store.get().favorites || []).slice();
-        var i = favs.indexOf(id);
-        if (i >= 0) favs.splice(i, 1); else favs.push(id);
-        store.set({ favorites: favs });
-        var app = appById(id);
-        TC.ui.toast((i >= 0 ? 'Retiré des favoris : ' : 'Ajouté aux favoris : ') + (app ? app.name : id));
+    function addToHome(id) {
+        var home = (store.get().home || []).slice();
+        if (home.indexOf(id) < 0) home.push(id);
+        store.set({ home: home });
+        render();
     }
 
-    function startMove(id) {
-        state.moving = id;
-        render('[data-row="favorites"][data-app="' + id + '"]');
+    function removeFromHome(id) {
+        store.set({ home: (store.get().home || []).filter(function (x) { return x !== id; }) });
+        render();
     }
 
-    function moveFavorite(delta) {
-        var favs = (store.get().favorites || []).slice();
-        var visibleIds = favorites().map(function (a) { return a.id; });
-        var vi = visibleIds.indexOf(state.moving);
-        var target = visibleIds[vi + delta];
-        if (vi < 0 || !target) return;
-        var a = favs.indexOf(state.moving);
-        var b = favs.indexOf(target);
-        favs[a] = target;
-        favs[b] = state.moving;
-        store.set({ favorites: favs });
-        render('[data-row="favorites"][data-app="' + state.moving + '"]');
+    /* Réorganiser les applis : OK prend / pose, flèches déplacent, Retour pose puis termine. */
+    var hintTimer = null;
+    function showHint(text) {
+        var el = doc.getElementById('watch-hint');
+        el.innerHTML = '';
+        el.appendChild(h('span', { class: 'hint-icon', html: ICONS.swap }));
+        el.appendChild(h('span', { text: text }));
+        el.hidden = false;
+        el.classList.add('show');
+        clearTimeout(hintTimer);
+    }
+    function hideHint() {
+        var el = doc.getElementById('watch-hint');
+        el.classList.remove('show');
+        hintTimer = setTimeout(function () { el.hidden = true; }, 300);
     }
 
-    function endMove() {
-        var id = state.moving;
-        state.moving = null;
-        render('[data-row="favorites"][data-app="' + id + '"]');
-        TC.ui.toast('Ordre des favoris enregistré');
+    function startReorder(heldId) {
+        state.reorder = { held: heldId || null };
+        doc.body.classList.add('reordering');
+        showHint(T.reorderHint);
+        render(heldId ? '#app [data-app="' + heldId + '"]' : null);
+        if (!heldId) {
+            var first = doc.querySelector('#dock [data-app]');
+            if (first) TC.focus.set(first);
+        }
+    }
+
+    function endReorder() {
+        state.reorder = null;
+        doc.body.classList.remove('reordering');
+        hideHint();
+        render();
+    }
+
+    function moveHeld(delta) {
+        var id = state.reorder.held;
+        var home = (store.get().home || []).slice();
+        var visible = homeApps().map(function (a) { return a.id; });
+        var from = visible.indexOf(id);
+        var to = Math.max(0, Math.min(visible.length - 1, from + delta));
+        if (from < 0 || to === from) return;
+        visible.splice(from, 1);
+        visible.splice(to, 0, id);
+        // Les applis de l'accueil absentes de la TV (désinstallées) gardent leur place à la fin.
+        var missing = home.filter(function (x) { return visible.indexOf(x) < 0; });
+        store.set({ home: visible.concat(missing) });
+        render('#app [data-app="' + id + '"]');
     }
 
     function inputByKey(key) {
@@ -388,23 +418,13 @@
         return null;
     }
 
-    var hintTimer = null;
-    function showWatchHint() {
-        var el = doc.getElementById('watch-hint');
-        el.textContent = state.watching.label + ' · Retour pour revenir à l’accueil';
-        el.hidden = false;
-        el.classList.add('show');
-        clearTimeout(hintTimer);
-        hintTimer = setTimeout(function () { el.classList.remove('show'); }, 4000);
-    }
-
     function watch(src) {
         platform.watchInput(src).then(function () {
             state.watching = src;
             doc.body.classList.add('watching');
-            showWatchHint();
+            TC.ui.toast(sourceLabel(src) + ' · Retour pour revenir à l’accueil', 4000);
         }).catch(function (err) {
-            TC.ui.toast('Impossible d’afficher ' + src.label + ' (' + platform.errorText(err) + '). Utilise la touche SOURCE.', 6000);
+            TC.ui.toast('Impossible d’afficher ' + sourceLabel(src) + ' (' + platform.errorText(err) + '). Utilise la touche SOURCE.', 6000);
         });
     }
 
@@ -412,35 +432,32 @@
         platform.stopWatching().catch(function () { /* déjà masquée */ });
         state.watching = null;
         doc.body.classList.remove('watching');
-        doc.getElementById('watch-hint').hidden = true;
         loadInputs().then(function () { render(); });
+    }
+
+    function openSystem(kind, label) {
+        platform.openSystem(kind).then(function () {
+            if (platform.preview) TC.ui.toast('Aperçu : ouverture de « ' + label + ' »');
+        }).catch(function () {
+            TC.ui.toast(label + ' : ' + T.notAvailable.toLowerCase() + ' depuis une appli. Utilise la touche ⚙ de la télécommande.', 5000);
+        });
     }
 
     function activate(el) {
         var action = el.getAttribute('data-action');
-        if (action === 'settings') return openSettings();
+        if (action === 'settings') return openQuickMenu(el);
         if (action === 'inputs') return openInputsMenu(el);
-        if (action === 'network') {
-            return TC.ui.toast(state.network === 'NONE' ? 'TV hors ligne' : 'Connectée en ' + (NETWORK_LABELS[state.network] || 'réseau'));
-        }
-        if (action === 'manage-favorites') return openManageFavorites();
-        if (action === 'inputs-help') return openInputsHelp();
-        if (action === 'refresh') return refreshAll().then(function () { TC.ui.toast('Applications actualisées'); });
+        if (action === 'network') return openSystem('network', T.network);
+        if (action === 'library') return openLibrary();
         var appId = el.getAttribute('data-app');
         if (appId) {
             var app = appById(appId);
             if (app) launch(app);
-            return;
-        }
-        var key = el.getAttribute('data-input');
-        if (key) {
-            var src = inputByKey(key);
-            if (src) watch(src);
         }
     }
 
     /* ------------------------------------------------------------------ */
-    /* Fenêtres : menus, paramètres                                        */
+    /* Fenêtres                                                            */
     /* ------------------------------------------------------------------ */
     function openOverlay(build, opts) {
         opts = opts || {};
@@ -468,114 +485,132 @@
         TC.focus.pop();
     }
 
-    function menuItem(label, fn, first) {
-        var b = h('button', { class: 'item focusable', 'data-first': first || null }, [h('span', { text: label })]);
+    function menuItem(label, fn, opts) {
+        opts = opts || {};
+        var b = h('button', { class: 'item focusable' + (opts.icon ? ' source' : ''), 'data-first': opts.first || null, 'data-menu': label }, [
+            opts.icon ? h('span', { html: opts.icon }) : null,
+            h('span', { class: 'grow', text: label }),
+            opts.note ? h('span', { class: 'note-right', text: opts.note }) : null
+        ]);
         b._activate = fn;
         return b;
     }
 
     function openMenu(title, items) {
         openOverlay(function (panel) {
-            panel.appendChild(h('h3', { text: title }));
+            if (title) panel.appendChild(h('h3', { text: title }));
             var list = h('div', { class: 'list', 'data-scroll': 'y' });
-            items.forEach(function (it, i) { list.appendChild(menuItem(it[0], it[1], i === 0)); });
+            items.forEach(function (it, i) { list.appendChild(menuItem(it[0], it[1], { first: i === 0 })); });
             panel.appendChild(list);
         });
     }
 
-    function openTileOptions(el) {
-        var appId = el.getAttribute('data-app');
-        if (!appId) return false;
-        var app = appById(appId);
-        if (!app) return false;
-        var fav = isFavorite(appId);
-        var items = [['Ouvrir', function () { closeOverlay(); launch(app); }]];
-        items.push([fav ? 'Retirer des favoris' : 'Ajouter aux favoris', function () { closeOverlay(); toggleFavorite(appId); render(); }]);
-        if (fav) items.push(['Déplacer dans les favoris', function () { closeOverlay(); startMove(appId); }]);
-        items.push(['Masquer cette appli', function () {
-            closeOverlay();
-            store.set({ hiddenApps: store.get().hiddenApps.concat([appId]) });
-            render();
-            TC.ui.toast('Masquée : ' + app.name + ' (Paramètres ▸ Applis masquées pour la réafficher)', 4000);
-        }]);
-        items.push(['Annuler', closeOverlay]);
-        openMenu(app.name, items);
-        return true;
-    }
-
-    function reorderFavorites() {
-        var first = favorites()[0];
-        if (first) startMove(first.id); else TC.ui.toast('Aucun favori à réorganiser');
-    }
-
-    function openOptions() {
-        openMenu('Options', [
-            ['Actualiser les applications', function () { closeOverlay(); refreshAll().then(function () { TC.ui.toast('Applications actualisées'); }); }],
-            ['Réorganiser les favoris', function () { closeOverlay(); reorderFavorites(); }],
-            ['Gérer les favoris', function () { closeOverlay(); openManageFavorites(); }],
-            ['Paramètres', function () { closeOverlay(); openSettings(); }],
-            ['Quitter TeleCoding', function () { closeOverlay(); platform.exit(); }]
-        ]);
-    }
-
-    // Menu déroulant sous la pastille « Entrées ».
-    function openInputsMenu(pill) {
+    // Menu déroulant sous une pastille de l'en-tête (Sources, Paramètres).
+    function openDropdown(pill, build, alignRight) {
         var r = pill.getBoundingClientRect();
         openOverlay(function (panel) {
-            panel.style.top = (r.bottom + 16) + 'px';
-            panel.style.left = r.left + 'px';
+            panel.style.top = (r.bottom + 12) + 'px';
+            if (alignRight) panel.style.right = (global.innerWidth - r.right) + 'px';
+            else panel.style.left = r.left + 'px';
             var list = h('div', { class: 'list', 'data-scroll': 'y' });
-            if (state.inputsError) {
-                list.appendChild(menuItem('Indisponible · utilise la touche SOURCE', function () { closeOverlay(); openInputsHelp(); }, true));
-            }
-            var lastType = null;
-            state.inputs.forEach(function (src, i) {
-                var group = src.type === 'HDMI' ? 'HDMI' : src.type;
-                if (lastType && group !== lastType) list.appendChild(h('div', { class: 'sep' }));
-                lastType = group;
-                var b = h('button', { class: 'item source focusable', 'data-first': i === 0 || null, 'data-source': src.key }, [
-                    h('span', { html: inputIcon(src.type) }),
-                    h('span', { class: 'grow', text: src.label }),
-                    src.connected ? h('span', { class: 'status', text: 'Connecté' }) : null
-                ]);
-                b._activate = function () { closeOverlay(); watch(src); };
-                list.appendChild(b);
-            });
+            build(list);
             panel.appendChild(list);
         }, { kind: 'dropdown', light: true });
     }
 
-    function openInputsHelp() {
-        openOverlay(function (panel) {
-            panel.appendChild(h('h3', { text: 'Entrées HDMI' }));
-            panel.appendChild(h('p', { class: 'text', text: 'Cette TV ne laisse pas TeleCoding lire la liste des entrées (' + state.inputsError + ').' }));
-            panel.appendChild(h('p', { class: 'text', text: 'Utilise la touche SOURCE de la télécommande pour changer d’entrée.' }));
-            panel.appendChild(menuItem('Compris', closeOverlay, true));
+    function openInputsMenu(pill) {
+        openDropdown(pill, function (list) {
+            if (state.inputsError) {
+                list.appendChild(menuItem(T.notAvailable, closeOverlay, { first: true, icon: ICONS.hdmi }));
+                return;
+            }
+            var inputs = state.inputs.filter(function (s) { return !store.get().inputsConnectedOnly || s.connected || s.type === 'TV'; });
+            if (!inputs.length) list.appendChild(menuItem(T.noInputs, closeOverlay, { first: true }));
+            var lastGroup = null;
+            inputs.forEach(function (src, i) {
+                var group = src.type === 'HDMI' ? 'HDMI' : src.type === 'TV' ? 'TV' : 'AV';
+                if (lastGroup && group !== lastGroup) list.appendChild(h('div', { class: 'sep' }));
+                lastGroup = group;
+                var icon = group === 'HDMI' ? ICONS.hdmi : group === 'TV' ? ICONS.tv : ICONS.av;
+                var b = h('button', { class: 'item source focusable', 'data-first': i === 0 || null, 'data-source': src.key }, [
+                    h('span', { html: icon }),
+                    h('span', { class: 'grow', text: sourceLabel(src) }),
+                    src.connected && src.type !== 'TV' ? h('span', { class: 'status', text: T.connected }) : null
+                ]);
+                b._activate = function () { closeOverlay(); watch(src); };
+                list.appendChild(b);
+            });
         });
     }
 
-    function openManageFavorites() {
+    // Menu de la pastille Paramètres (quick settings panel de CleanYourTV).
+    function openQuickMenu(pill) {
+        openDropdown(pill, function (list) {
+            [
+                [T.tvSettings, ICONS.gear, function () { closeOverlay(); openSystem('settings', T.tvSettings); }],
+                [T.network, ICONS.wifi, function () { closeOverlay(); openSystem('network', T.network); }],
+                [T.library, ICONS.apps, function () { closeOverlay(); openLibrary(); }],
+                [T.reorder, ICONS.swap, function () { closeOverlay(); startReorder(); }],
+                [T.launcherSettings, ICONS.home, function () { closeOverlay(); openSettings(); }]
+            ].forEach(function (it, i) { list.appendChild(menuItem(it[0], it[2], { first: i === 0, icon: it[1] })); });
+        }, true);
+    }
+
+    function openTileOptions(el) {
+        var appId = el.getAttribute('data-app');
+        var app = appId ? appById(appId) : null;
+        if (!app) return false;
+        openMenu(app.name, [
+            [T.open, function () { closeOverlay(); launch(app); }],
+            [T.move, function () { closeOverlay(); startReorder(appId); }],
+            [T.removeHome, function () { closeOverlay(); removeFromHome(appId); TC.ui.toast(app.name + ' est dans la bibliothèque d’applications'); }],
+            ['Annuler', closeOverlay]
+        ]);
+        return true;
+    }
+
+    /* Bibliothèque d'applications : toutes les applis, celles hors de l'accueil d'abord. */
+    function openLibrary() {
+        // Comme CleanYourTV, seulement des applis qu'on peut ouvrir : les services système
+        // de Samsung n'y sont que si on le demande dans les paramètres.
+        var showSystem = store.get().librarySystemApps;
+        var all = state.apps.filter(function (a) { return showSystem || !a.system; });
+        all.sort(function (a, b) {
+            var d = (isOnHome(a.id) ? 1 : 0) - (isOnHome(b.id) ? 1 : 0);
+            return d || (a.system ? 1 : 0) - (b.system ? 1 : 0) || a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+        });
         openOverlay(function (panel) {
-            panel.appendChild(h('h3', { text: 'Gérer les favoris' }));
-            panel.appendChild(h('p', { class: 'text', text: 'OK pour ajouter ou retirer. Retour pour fermer.' }));
-            var list = h('div', { class: 'list', 'data-scroll': 'y' });
-            visibleApps().forEach(function (app, i) {
-                var b = h('button', { class: 'item check focusable' + (isFavorite(app.id) ? ' on' : ''), 'data-first': i === 0 || null, 'data-app-check': app.id }, [
-                    h('span', { text: app.name }), h('span', { class: 'box' })
+            panel.appendChild(h('div', { class: 'library-head' }, [
+                h('h3', { text: T.library }),
+                h('span', { class: 'count', text: all.length + (all.length > 1 ? ' applications' : ' application') })
+            ]));
+            panel.appendChild(h('p', { class: 'text', text: T.libraryHintAdd }));
+            var track = h('div', { class: 'library-track', 'data-scroll': 'x' });
+            if (!all.length) panel.appendChild(menuItem(T.libraryEmpty, closeOverlay, { first: true }));
+            all.forEach(function (app, i) {
+                var status = h('span', { class: 'status', text: isOnHome(app.id) ? T.onHome : T.addHome });
+                var card = h('button', { class: 'lib-card focusable', 'data-row': 'library', 'data-first': i === 0 || null, 'data-lib': app.id }, [
+                    TC.ui.libraryIcon(app), h('span', { class: 'lib-name', text: app.name }), status
                 ]);
-                b._activate = function () {
-                    var favs = (store.get().favorites || []).slice();
-                    var idx = favs.indexOf(app.id);
-                    if (idx >= 0) favs.splice(idx, 1); else favs.push(app.id);
-                    store.set({ favorites: favs });
-                    b.classList.toggle('on', idx < 0);
-                    render();
+                card._activate = function () {
+                    if (isOnHome(app.id)) { closeOverlay(); launch(app); return; }
+                    addToHome(app.id);
+                    status.textContent = T.onHome;
+                    TC.ui.toast(app.name + ' ajoutée à l’accueil');
                 };
-                list.appendChild(b);
+                card._options = function () {
+                    var on = isOnHome(app.id);
+                    closeOverlay();
+                    openMenu(app.name, [
+                        [T.open, function () { closeOverlay(); launch(app); }],
+                        [on ? T.removeHome : T.addHome, function () { closeOverlay(); if (on) removeFromHome(app.id); else addToHome(app.id); }],
+                        ['Annuler', closeOverlay]
+                    ]);
+                };
+                track.appendChild(card);
             });
-            if (!visibleApps().length) list.appendChild(menuItem('Aucune application détectée', closeOverlay, true));
-            panel.appendChild(list);
-        }, { kind: 'side' });
+            panel.appendChild(track);
+        }, { kind: 'library' });
     }
 
     function choiceLabel(list, id) {
@@ -605,9 +640,10 @@
         });
     }
 
+    /* Paramètres du lanceur. */
     function openSettings() {
         var ctx = openOverlay(function (panel) {
-            panel.appendChild(h('h3', { text: 'Paramètres' }));
+            panel.appendChild(h('h3', { text: T.launcherSettings }));
             var list = h('div', { class: 'list', 'data-scroll': 'y' });
             panel.appendChild(list);
             build(list);
@@ -643,10 +679,20 @@
             var s = store.get();
             function set(patch) { store.set(patch); rebuild(); }
 
+            list.appendChild(h('div', { class: 'group', text: 'Accueil' }));
+            list.appendChild(row(T.columns, choiceLabel(COLS, s.cols), {
+                cycle: function (d) { set({ cols: cycle(COLS, s.cols, d) }); render(); }
+            }, true));
+            list.appendChild(row(T.reorder, '', { activate: function () { closeOverlay(); startReorder(); } }));
+            list.appendChild(row(T.library, '', { activate: function () { closeOverlay(); openLibrary(); } }));
+            list.appendChild(row('Applis système dans la bibliothèque', s.librarySystemApps ? 'Activé' : 'Désactivé', {
+                cycle: function () { set({ librarySystemApps: !s.librarySystemApps }); }
+            }));
+
             list.appendChild(h('div', { class: 'group', text: 'Apparence' }));
             list.appendChild(row('Thème', choiceLabel(THEMES, s.theme), {
                 cycle: function (d) { set({ theme: cycle(THEMES, s.theme, d) }); }
-            }, true));
+            }));
             list.appendChild(row('Fond d’écran', choiceLabel(WALLPAPERS, s.wallpaper), {
                 cycle: function (d) { set({ wallpaper: cycle(WALLPAPERS, s.wallpaper, d) }); }
             }));
@@ -660,27 +706,24 @@
                     }
                 }));
             }
-            list.appendChild(row('Logos des applis', s.logoStyle === 'samsung' ? 'Icônes Samsung' : 'Pack TeleCoding', {
+            list.appendChild(row('Logos des applis', s.logoStyle === 'samsung' ? 'Icônes Samsung' : 'Logos officiels', {
                 cycle: function () { set({ logoStyle: s.logoStyle === 'samsung' ? 'pack' : 'samsung' }); render(); }
-            }));
-            list.appendChild(row('Applis par rangée', choiceLabel(COLS, s.cols), {
-                cycle: function (d) { set({ cols: cycle(COLS, s.cols, d) }); render(); }
             }));
             list.appendChild(row('Animations', choiceLabel(ANIMATIONS, s.animations), {
                 cycle: function (d) { set({ animations: cycle(ANIMATIONS, s.animations, d) }); }
             }));
 
             list.appendChild(h('div', { class: 'group', text: 'En-tête' }));
-            list.appendChild(row('Salutation', s.showGreeting ? 'Oui' : 'Non', {
+            list.appendChild(row('Salutation', s.showGreeting ? 'Activé' : 'Désactivé', {
                 cycle: function () { set({ showGreeting: !s.showGreeting }); }
             }));
             list.appendChild(row('Format de l’heure', s.clock24 ? '24 h' : '12 h', {
                 cycle: function () { set({ clock24: !s.clock24 }); }
             }));
-            list.appendChild(row('Afficher la date', s.showDate ? 'Oui' : 'Non', {
+            list.appendChild(row('Date', s.showDate ? 'Activé' : 'Désactivé', {
                 cycle: function () { set({ showDate: !s.showDate }); }
             }));
-            list.appendChild(row('Afficher la météo', s.showWeather ? 'Oui' : 'Non', {
+            list.appendChild(row('Météo', s.showWeather ? 'Activé' : 'Désactivé', {
                 cycle: function () { set({ showWeather: !s.showWeather }); refreshWeather(); }
             }));
             if (s.showWeather) {
@@ -700,53 +743,22 @@
                 }));
             }
 
-            list.appendChild(h('div', { class: 'group', text: 'Accueil' }));
-            list.appendChild(row('Gérer les favoris', (s.favorites || []).length + ' favori(s)', {
-                activate: function () { closeOverlay(); openManageFavorites(); }
-            }));
-            list.appendChild(row('Réorganiser les favoris', '', {
-                activate: function () { closeOverlay(); reorderFavorites(); }
-            }));
-            list.appendChild(row('Rangée Entrées', s.showInputsRow ? 'Affichée' : 'Menu seulement', {
-                cycle: function () { set({ showInputsRow: !s.showInputsRow }); render(); }
-            }));
-            if (s.showInputsRow) {
-                var inputsFirst = s.sections.indexOf('inputs') < s.sections.indexOf('apps');
-                list.appendChild(row('Ordre des rangées', inputsFirst ? 'Entrées, puis applis' : 'Applis, puis entrées', {
-                    cycle: function () {
-                        set({ sections: inputsFirst ? ['favorites', 'apps', 'inputs'] : ['favorites', 'inputs', 'apps'] });
-                        render();
-                    }
-                }));
-            }
-            list.appendChild(row('Ordre des applis', s.appSort === 'usage' ? 'Les plus utilisées' : 'De A à Z', {
-                cycle: function () { set({ appSort: s.appSort === 'usage' ? 'alpha' : 'usage' }); render(); }
-            }));
-            list.appendChild(row('Applis système', s.showSystemApps ? 'Affichées' : 'Masquées', {
-                cycle: function () { set({ showSystemApps: !s.showSystemApps }); render(); }
-            }));
-            list.appendChild(row('Applis masquées', s.hiddenApps.length ? s.hiddenApps.length + ' · OK pour tout réafficher' : 'Aucune', {
-                activate: function () {
-                    if (!s.hiddenApps.length) return;
-                    set({ hiddenApps: [] });
-                    render();
-                    TC.ui.toast('Toutes les applis sont réaffichées');
-                }
+            list.appendChild(h('div', { class: 'group', text: T.inputs }));
+            list.appendChild(row('Seulement les sources connectées', s.inputsConnectedOnly ? 'Activé' : 'Désactivé', {
+                cycle: function () { set({ inputsConnectedOnly: !s.inputsConnectedOnly }); }
             }));
 
             list.appendChild(h('div', { class: 'group', text: 'Système' }));
             list.appendChild(row('Actualiser les applications', '', {
                 activate: function () { refreshAll().then(function () { TC.ui.toast('Applications actualisées'); }); }
             }));
-            list.appendChild(row('Réinitialiser l’apparence', '', {
-                activate: function () { store.reset(); rebuild(); render(); TC.ui.toast('Apparence réinitialisée (favoris conservés)'); }
+            list.appendChild(row(T.followTheme, '', {
+                activate: function () { store.reset(); rebuild(); render(); TC.ui.toast('Choix réinitialisés (l’accueil est conservé)'); }
             }));
-            list.appendChild(row('Quitter TeleCoding', '', {
-                activate: function () { platform.exit(); }
-            }));
+            list.appendChild(row('Quitter TeleCoding', '', { activate: function () { platform.exit(); } }));
             list.appendChild(h('p', { class: 'text small', text:
-                'TeleCoding 2.0 · Sur Samsung (Tizen), la touche HOME ouvre toujours le Smart Hub : ' +
-                'c’est imposé par le système. Pour que TeleCoding s’ouvre au démarrage, active ' +
+                'TeleCoding 3.0 · design et code adaptés de CleanYourTV (MIT). Sur Samsung, la touche HOME ouvre ' +
+                'toujours le Smart Hub : c’est imposé par le système. Pour que TeleCoding s’ouvre au démarrage, active ' +
                 '« Exécution auto. de la dernière appli » dans les réglages de la TV.' }));
         }
     }
@@ -775,16 +787,16 @@
 
         if (state.watching) {
             e.preventDefault();
-            if (isBack(code)) stopWatch(); else showWatchHint();
+            if (isBack(code)) stopWatch();
             return;
         }
 
         if (DIRS[code]) {
             e.preventDefault();
             var dir = DIRS[code];
-            if (state.moving) {
-                if (dir === 'left') moveFavorite(-1);
-                if (dir === 'right') moveFavorite(1);
+            if (state.reorder && state.reorder.held) {
+                var cols = store.get().cols;
+                moveHeld(dir === 'left' ? -1 : dir === 'right' ? 1 : dir === 'up' ? -cols : cols);
                 return;
             }
             if (el && el._horizontal && (dir === 'left' || dir === 'right')) {
@@ -798,15 +810,22 @@
         if (code === K.ENTER) {
             e.preventDefault();
             if (e.repeat || !el) return;
-            if (state.moving) { endMove(); return; }
+            if (state.reorder) {
+                var id = el.getAttribute('data-app');
+                if (id) {
+                    state.reorder.held = state.reorder.held === id ? null : id;
+                    render('#app [data-app="' + id + '"]');
+                }
+                return;
+            }
             if (press) { clearTimeout(press.timer); press = null; }
-            // Appui long sur une carte d'appli = menu d'options.
+            // Appui long = options (carte de l'accueil ou de la bibliothèque).
             press = { el: el, long: false, timer: null };
-            if (!state.overlay && el.getAttribute('data-app')) {
+            if (el.getAttribute('data-app') || el._options) {
                 press.timer = setTimeout(function () {
                     if (!press) return;
                     press.long = true;
-                    openTileOptions(press.el);
+                    if (press.el._options) press.el._options(); else openTileOptions(press.el);
                 }, LONG_PRESS_MS);
             }
             return;
@@ -814,9 +833,12 @@
 
         if (isBack(code)) {
             e.preventDefault();
-            if (state.moving) { endMove(); return; }
+            if (state.reorder) {
+                if (state.reorder.held) { state.reorder.held = null; render(); } else endReorder();
+                return;
+            }
             if (state.overlay) { closeOverlay(); return; }
-            // Sur l'accueil, Retour ramène simplement au premier favori.
+            // Sur l'accueil, Retour ramène à la première appli.
             var first = doc.querySelector('#dock .focusable');
             if (first) TC.focus.set(first);
             return;
@@ -824,8 +846,9 @@
 
         if (isMenu(code)) {
             e.preventDefault();
-            if (state.overlay || state.moving) return;
-            if (!el || !openTileOptions(el)) openOptions();
+            if (state.overlay || state.reorder) return;
+            if (el && el._options) { el._options(); return; }
+            if (!el || !openTileOptions(el)) openQuickMenu(doc.querySelector('[data-action="settings"]'));
             return;
         }
 
@@ -890,7 +913,7 @@
         // Démarrage instantané : la dernière liste connue s'affiche tout de suite,
         // la vraie liste la remplace dès que la TV l'a renvoyée.
         var cached = store.get().appsCache;
-        if (cached.length && store.get().favorites) {
+        if (cached.length && store.get().home) {
             state.apps = cached;
             render();
             showHome();

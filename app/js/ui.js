@@ -193,5 +193,20 @@
         }, ms || 2600);
     }
 
-    TC.ui = { h: h, appArt: appArt, logoFor: logoFor, glowOf: glowOf, ambient: ambient, hslToRgb: hslToRgb, toast: toast };
+    // Icône carrée de la bibliothèque : l'icône Samsung, sinon un monogramme.
+    function libraryIcon(app) {
+        var box = h('div', { class: 'lib-icon' });
+        function mono() {
+            box.innerHTML = '';
+            box.style.background = css(hslToRgb(hue(app.name), 45, 32));
+            box.appendChild(h('span', { text: app.name.slice(0, 2).toUpperCase() }));
+        }
+        if (!app.icon) { mono(); return box; }
+        var img = h('img', { src: app.icon, alt: '' });
+        img.onerror = mono;
+        box.appendChild(img);
+        return box;
+    }
+
+    TC.ui = { h: h, appArt: appArt, logoFor: logoFor, libraryIcon: libraryIcon, glowOf: glowOf, ambient: ambient, hslToRgb: hslToRgb, toast: toast };
 })(this);

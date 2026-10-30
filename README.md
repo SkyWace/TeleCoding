@@ -1,18 +1,20 @@
 # TeleCoding
 
-Un écran d'accueil personnel pour ma TV **Samsung UE43CU7025** : sans publicité, sans abonnement, sans serveur. On y trouve mes applications et mes entrées HDMI, et tout se pilote à la télécommande.
+Un écran d'accueil personnel pour ma TV **Samsung UE43CU7025** : sans publicité, sans abonnement, sans serveur. On y trouve mes applications et mes sources HDMI, et tout se pilote à la télécommande.
 
-![Accueil TeleCoding](docs/accueil-disney.png)
+![Accueil TeleCoding](docs/accueil.png)
 
-Le design reprend celui du launcher Android [CleanYourTV](https://github.com/Gathin23/cleanyourtv) (licence MIT), adapté à Tizen :
-- un **halo** qui prend la couleur de l'appli sélectionnée ;
-- le **nom de l'appli en grand** au-dessus d'une **bande de grandes cartes** (les favoris) ;
-- la **grille** de toutes les applis en dessous ;
-- en haut, la salutation, l'heure et la date, avec des **pastilles** Entrées / Wi-Fi / Paramètres.
+C'est une transposition pour Samsung (Tizen) du launcher Android [CleanYourTV](https://github.com/Gathin23/cleanyourtv) (licence MIT). Leur code Java ne peut pas tourner sur une Samsung, alors tout est réécrit en HTML/JavaScript en suivant leur code et leurs captures 1920×1080 :
+- **mise en page au pixel près** : salutation (« Bonjour », « Bon après-midi », « Bonsoir », « Bonne nuit », mêmes horaires), heure, date, pastilles **Sources / Wi-Fi / Paramètres** ; grand titre ; bande de 4 cartes de 360 × 201 px espacées de 64 px ; grille dessous ;
+- **même modèle** : une seule liste ordonnée d'applis, les 4 premières forment la bande, les autres la grille ; une appli retirée va dans la **Bibliothèque d'applications** ; une appli installée s'ajoute à la fin ;
+- **mêmes menus** : menu des sources, menu rapide du bouton Paramètres, **Réorganiser les applis** (« OK prend une appli, les flèches la déplacent, Retour la pose »), Paramètres du lanceur ;
+- **mêmes textes**, repris de leur traduction française.
+
+![Grille](docs/grille.png)
 
 Une partie de leur code est transposée en JavaScript : `app/js/artwork.js` reprend leur mode « uniform tiles » (`AppAdapter.java`), qui donne à chaque carte la couleur du support de l'icône et au halo sa couleur dominante. Les couleurs et arrondis viennent de leurs fichiers `pill_bg.xml`, `glass_panel.xml`, `tile_bg.xml` et `DockDecoration.java`, la police Outfit aussi. Licences : [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-**Logos :** 16 applis ont leur **vrai logo** en grande bannière, comme sur Android TV : Netflix, YouTube, Prime Video, Disney+, Spotify, ARTE, CANAL+, Crunchyroll, Apple TV, Apple Music, Xbox, Amazon Luna, Orange TV, Pluto TV, Samsung TV Plus et Internet. Les logos viennent de Wikimedia Commons, uniquement ceux sous licence libre (voir [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). D'autres marques ont un logo simplifié tiré de [Simple Icons](https://simpleicons.org), et le reste garde son icône Samsung, sur une carte à sa couleur. *Paramètres ▸ Logos des applis* permet de revenir aux icônes Samsung partout.
+**Logos :** 16 applis ont leur **vrai logo** en grande bannière, comme sur Android TV : Netflix, YouTube, Prime Video, Disney+, Spotify, ARTE, CANAL+, Crunchyroll, Apple TV, Apple Music, Xbox, Amazon Luna, Orange TV, Pluto TV, Samsung TV Plus et Internet. Les logos viennent de Wikimedia Commons, uniquement ceux sous licence libre (voir [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). D'autres marques ont un logo simplifié tiré de [Simple Icons](https://simpleicons.org), et le reste garde son icône Samsung, sur une carte à sa couleur. *Paramètres du lanceur ▸ Logos des applis* permet de revenir aux icônes Samsung partout.
 
 ## Ce qu'il faut savoir sur cette TV
 
@@ -21,39 +23,47 @@ La CU7025 tourne sous **Tizen** (le système de Samsung), pas sous Android TV. �
 | Fonction | Possible ? | Comment |
 |---|---|---|
 | Appli personnelle sans pub | ✅ | Appli web Tizen (`.wgt`) installée en mode développeur |
-| Détecter les applis installées | ✅ | `tizen.application.getAppsInfo()`, puis tri : la TV déclare ~450 entrées, surtout des services système. On garde les applis du store et les vraies applis intégrées (Netflix, Prime Video, Internet…). Les autres sont réglables dans *Paramètres ▸ Applis système* |
+| Détecter les applis installées | ✅ | `tizen.application.getAppsInfo()`, puis tri : la TV déclare ~450 entrées, surtout des services système. On garde les applis du store et les vraies applis intégrées (Netflix, Prime Video, Internet…). Les services système restent hors de l'accueil et de la bibliothèque |
 | Lancer une appli | ✅ | `tizen.application.launch()` |
-| Entrées HDMI | ✅ (dans l'appli) | Pastille **Entrées** (menu déroulant) ou rangée optionnelle. `tizen.tvwindow.setSource()` : l'entrée s'affiche en plein écran *dans* TeleCoding, et Retour ramène à l'accueil |
+| Sources HDMI | ✅ (dans l'appli) | Pastille **Sources** (menu déroulant). `tizen.tvwindow.setSource()` : l'entrée s'affiche en plein écran *dans* TeleCoding, et Retour ramène à l'accueil |
 | Remplacer le Smart Hub / la touche HOME | ❌ | Impossible sur Tizen pour une appli tierce. HOME ouvre toujours le Smart Hub |
 | Ouvrir TeleCoding à l'allumage | ⚠️ | Réglage Samsung « Exécution auto. de la dernière appli », à activer soi-même |
 
-Limites connues de l'affichage HDMI dans l'appli : tant que TeleCoding affiche l'entrée, les flèches et OK restent captées par l'appli, donc le pilotage Anynet+ (HDMI-CEC) de l'appareil branché ne passe pas. Pour piloter une console ou une box avec la télécommande de la TV, utilise la touche **SOURCE**.
+Limites connues de l'affichage HDMI dans l'appli : tant que TeleCoding affiche la source, les flèches et OK restent captées par l'appli, donc le pilotage Anynet+ (HDMI-CEC) de l'appareil branché ne passe pas. Pour piloter une console ou une box avec la télécommande de la TV, utilise la touche **SOURCE**.
 
 ## Navigation à la télécommande
 
 | Touche | Action |
 |---|---|
-| ◀ ▶ ▲ ▼ | Se déplacer (le focus est toujours visible ; une rangée retient sa dernière position) |
-| OK | Ouvrir l'appli / l'entrée, ou valider |
-| OK maintenu | Options de l'appli : favoris, déplacer |
-| Retour | Fermer une fenêtre, quitter l'entrée HDMI, revenir au début |
-| Menu / Tools / Jaune | Options de l'élément sélectionné |
-| Bleu | Paramètres |
+| ◀ ▶ ▲ ▼ | Se déplacer (une ligne retient sa dernière position) |
+| OK | Ouvrir l'appli ou la source, valider |
+| OK maintenu | Options de l'appli : Ouvrir, Déplacer, Retirer de l'accueil |
+| Retour | Fermer un menu, quitter une source HDMI, revenir à la première appli |
+| Menu / Tools / Jaune | Options de l'appli sélectionnée (sinon le menu rapide) |
+| Bleu | Paramètres du lanceur |
 | HOME | Smart Hub Samsung (imposé par le système) |
 
-## Paramètres (enregistrés sur la TV)
+**Réorganiser les applis** (appui long ▸ Déplacer, ou Paramètres ▸ Réorganiser les applis) : OK prend une appli, les flèches la déplacent (◀ ▶ d'une place, ▲ ▼ d'une ligne, de la bande à la grille), Retour la pose, Retour à nouveau pour terminer.
 
-- **Apparence :** thème (Ambiance, qui suit la couleur de l'appli ; Minuit, Ambre, Émeraude ; Noir profond ; Noir OLED), fond d'écran (dégradés ou image par URL), applis par rangée (4, 5 ou 6), animations.
-- **En-tête :** salutation, heure 12 h / 24 h, date, météo (désactivée par défaut).
-- **Accueil :** favoris, rangée Entrées, ordre des rangées, ordre des applis (A → Z ou les plus utilisées), applis système, applis masquées.
+![Réorganiser](docs/reorganiser.png)
 
-![Paramètres](docs/parametres.png)
+**Bibliothèque d'applications** (pastille sous la grille, ou menu Paramètres) : toutes les applis ; OK ajoute à l'accueil celle qui n'y est pas, ou ouvre celle qui y est. Les services système de Samsung n'y apparaissent que si on l'active dans les paramètres.
 
-![Menu des entrées](docs/entrees.png)
+![Bibliothèque](docs/bibliotheque.png)
+
+## Menus et paramètres
+
+- **Sources** : HDMI, autres entrées et « TV en direct », avec « Connecté » sur les entrées branchées.
+- **Paramètres** (menu rapide) : Paramètres du téléviseur, Réseau, Bibliothèque d'applications, Réorganiser les applis, Paramètres du lanceur. Les deux premiers essaient d'ouvrir les réglages Samsung ; Samsung ne documente pas cette ouverture, donc si elle est refusée, TeleCoding le dit et renvoie à la touche ⚙ de la télécommande.
+- **Paramètres du lanceur** (enregistrés sur la TV) : applications par ligne (4 à 7), thème (Ambiance qui suit la couleur de l'appli, Noir, Noir OLED, Minuit, Ambre, Émeraude), fond d'écran, logos des applis, animations, salutation, format de l'heure, date, météo, sources connectées seulement, actualiser, « Suivre le thème (réinitialiser les choix) ».
+
+![Menu Paramètres](docs/menu-parametres.png)
+
+![Paramètres du lanceur](docs/parametres.png)
 
 La météo est la seule fonction qui sort sur Internet. Elle interroge l'API gratuite [Open-Meteo](https://open-meteo.com), sans compte ni clé, et seulement si tu l'actives.
 
-Les captures viennent de l'aperçu navigateur : les icônes y sont dessinées pour l'occasion. Sur la TV, ce sont les icônes officielles des applis.
+Les captures viennent de l'aperçu navigateur : certaines icônes y sont simulées. Sur la TV, ce sont les icônes et logos réels.
 
 ## Installation (PC Windows)
 
@@ -110,5 +120,5 @@ npm install && npm test
 
 ### État des tests
 
-- ✅ **Interface, dans Chromium avec API simulées** : 75 vérifications (navigation, logos, halo, titre, lancement, menu des entrées, HDMI, favoris, masquage, paramètres, persistance, migration, aucune erreur JS).
+- ✅ **Interface, dans Chromium avec API simulées** : 72 vérifications (navigation, logos, halo, sources, menu rapide, réorganisation, bibliothèque, paramètres, persistance, migration, aucune erreur JS).
 - ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).
