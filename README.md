@@ -26,6 +26,7 @@ La CU7025 tourne sous **Tizen** (le système de Samsung), pas sous Android TV. �
 | Détecter les applis installées | ✅ | `tizen.application.getAppsInfo()`, puis tri : la TV déclare ~450 entrées, surtout des services système. On garde les applis du store et les vraies applis intégrées (Netflix, Prime Video, Internet…). Les services système restent hors de l'accueil et de la bibliothèque |
 | Lancer une appli | ✅ | `tizen.application.launch()` |
 | Sources HDMI | ✅ (dans l'appli) | Pastille **Sources** (menu déroulant). `tizen.tvwindow.setSource()` : l'entrée s'affiche en plein écran *dans* TeleCoding, et Retour ramène à l'accueil |
+| Revenir à TeleCoding en quittant une appli (Retour) | ⚠️ | Les applis sont lancées en « mode groupe » Tizen (`ApplicationControl`, `launchMode: 'GROUP'`) : en la quittant, le système revient à l'appli qui l'a lancée. Chaque appli choisit si elle l'accepte ; sinon, retour au Smart Hub. Réglage : *Paramètres du lanceur ▸ Retour vers TeleCoding après une appli* |
 | Remplacer le Smart Hub / la touche HOME | ❌ | Impossible sur Tizen pour une appli tierce. HOME ouvre toujours le Smart Hub |
 | Ouvrir TeleCoding à l'allumage | ⚠️ | Réglage Samsung « Exécution auto. de la dernière appli », à activer soi-même |
 
@@ -133,5 +134,5 @@ Mesuré dans Chromium (16 appuis de télécommande) : rastérisation de 918 ms �
 
 ### État des tests
 
-- ✅ **Interface, dans Chromium avec API simulées** : 74 vérifications (navigation, logos, halo, sources, menu rapide, réorganisation, bibliothèque, paramètres, persistance, migration, aucune erreur JS).
+- ✅ **Interface, dans Chromium avec API simulées** : 75 vérifications (navigation, logos, halo, sources, menu rapide, réorganisation, bibliothèque, paramètres, persistance, migration, aucune erreur JS).
 - ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).

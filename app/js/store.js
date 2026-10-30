@@ -25,6 +25,7 @@
         inputsConnectedOnly: false, // menu Sources : seulement les entrées branchées
         librarySystemApps: false,   // bibliothèque : montrer aussi les services système de Samsung
         showPerf: false,            // compteur d'images par seconde (diagnostic de fluidité)
+        returnToLauncher: true,     // lancer les applis en mode groupe : Retour revient à TeleCoding
         // Comme CleanYourTV : une seule liste ordonnée. Les `cols` premières forment la bande,
         // les suivantes la grille ; le reste est dans la bibliothèque d'applications.
         home: null,                 // null = premier lancement

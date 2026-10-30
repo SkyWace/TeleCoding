@@ -152,8 +152,19 @@
             });
         },
 
-        launchApp: function (id) {
-            return promisify(function (ok, ko) { tz.application.launch(id, ok, ko); });
+        /*
+         * group = true : lancement en « mode groupe » (ApplicationControl, launchMode 'GROUP').
+         * L'appli s'ouvre dans le groupe de TeleCoding : quand on la quitte avec Retour, le système
+         * revient à TeleCoding au lieu du Smart Hub. C'est l'appli lancée qui décide si elle accepte
+         * ce mode ; si la TV refuse le lancement, on relance normalement.
+         */
+        launchApp: function (id, opts) {
+            var plain = function () { return promisify(function (ok, ko) { tz.application.launch(id, ok, ko); }); };
+            if (!(opts && opts.group) || !tz.ApplicationControl || !tz.application.launchAppControl) return plain();
+            return promisify(function (ok, ko) {
+                var ctrl = new tz.ApplicationControl('http://tizen.org/appcontrol/operation/default', null, null, null, null, 'GROUP');
+                tz.application.launchAppControl(ctrl, id, ok, ko, null);
+            }).catch(plain);
         },
 
         listInputs: function () {
@@ -277,8 +288,9 @@
                 return { id: m[0], name: cleanName(m[1]), icon: mockIcon(m[0]), system: !isUserApp(m[0]) };
             }))));
         },
-        launchApp: function (id) {
+        launchApp: function (id, opts) {
             this.launched.push(id);
+            this.lastLaunchMode = opts && opts.group ? 'GROUP' : 'SINGLE';
             return Promise.resolve();
         },
         listInputs: function () {

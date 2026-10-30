@@ -344,7 +344,7 @@
     /* Actions                                                             */
     /* ------------------------------------------------------------------ */
     function launch(app) {
-        platform.launchApp(app.id).then(function () {
+        platform.launchApp(app.id, { group: store.get().returnToLauncher }).then(function () {
             if (platform.preview) TC.ui.toast('Aperçu : lancement de ' + app.name);
         }).catch(function (err) {
             TC.ui.toast(T.cantOpen + app.name + ' (' + platform.errorText(err) + ')', 5000);
@@ -742,6 +742,10 @@
                     }
                 }));
             }
+
+            list.appendChild(row('Retour vers TeleCoding après une appli', s.returnToLauncher ? 'Activé' : 'Désactivé', {
+                cycle: function () { set({ returnToLauncher: !s.returnToLauncher }); }
+            }));
 
             list.appendChild(h('div', { class: 'group', text: T.inputs }));
             list.appendChild(row('Seulement les sources connectées', s.inputsConnectedOnly ? 'Activé' : 'Désactivé', {

@@ -128,6 +128,7 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
     await press(page, 'Enter');
     await page.waitForTimeout(150);
     check((await page.textContent('#toast')).includes('lancement'), 'OK lance l’application');
+    check(await page.evaluate(() => TC.platform.lastLaunchMode) === 'GROUP', 'lancement en mode groupe (Retour revient à TeleCoding)');
 
     console.log('Sources');
     await press(page, 'ArrowUp');
