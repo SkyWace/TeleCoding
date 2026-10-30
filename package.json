@@ -5,7 +5,8 @@
   "description": "Accueil personnel pour TV Samsung (Tizen)",
   "scripts": {
     "test": "node tests/smoke.test.js",
-    "screenshots": "node tests/smoke.test.js --screenshots"
+    "screenshots": "node tests/smoke.test.js --screenshots",
+    "perf": "node tests/perf.js"
   },
   "devDependencies": {
     "playwright": "^1.48.0"

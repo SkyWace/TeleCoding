@@ -118,7 +118,17 @@ Aperçu sur PC : ouvre `app/index.html` dans Chrome. Les flèches et Entrée fon
 npm install && npm test
 ```
 
+### Fluidité
+
+`npm run perf` parcourt l'accueil avec un processeur ralenti 6 fois (proche d'une TV) et mesure le temps passé à dessiner. Ce qui rend TeleCoding léger :
+- **le défilement passe par la carte graphique** : la page, la bande et les menus glissent avec `transform` au lieu de défiler, donc rien n'est redessiné ;
+- **le halo est un petit dégradé de 192 × 108 px** agrandi par la carte graphique, avec un fondu entre deux calques (méthode de CleanYourTV, `setAmbient`), au lieu d'un dégradé plein écran redessiné à chaque appli ;
+- **pas d'ombre floue ni de filtre CSS** : l'anneau de sélection est fait d'anneaux nets, et les logos à passer en blanc sont recolorés une seule fois ;
+- **les couleurs des icônes sont mémorisées** d'un lancement à l'autre, et la dernière liste d'applis s'affiche tout de suite au démarrage.
+
+Mesuré dans Chromium (16 appuis de télécommande) : rastérisation de 918 ms à environ 170 ms, peinture de 376 ms à environ 200 ms.
+
 ### État des tests
 
-- ✅ **Interface, dans Chromium avec API simulées** : 72 vérifications (navigation, logos, halo, sources, menu rapide, réorganisation, bibliothèque, paramètres, persistance, migration, aucune erreur JS).
+- ✅ **Interface, dans Chromium avec API simulées** : 74 vérifications (navigation, logos, halo, sources, menu rapide, réorganisation, bibliothèque, paramètres, persistance, migration, aucune erreur JS).
 - ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).

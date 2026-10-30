@@ -45,39 +45,77 @@
         return null;
     }
 
+    /*
+     * Défilement par la carte graphique : au lieu de faire défiler le conteneur (scrollTop /
+     * scrollLeft, qui redessine toute la zone à chaque image sur une TV), son contenu est
+     * enveloppé dans une « glissière » (.slide) qu'on déplace avec transform. Elle a son
+     * propre calque : la déplacer ne redessine rien.
+     */
+    function slideOf(container) {
+        var slide = container._slide;
+        var ok = slide && slide.parentNode === container && container.children.length === 1;
+        if (!ok) {
+            var offset = slide && slide.parentNode === container ? slide._offset : 0;
+            slide = doc.createElement('div');
+            slide.className = 'slide slide-' + container.getAttribute('data-scroll');
+            while (container.firstChild) {
+                if (container.firstChild === container._slide) container.removeChild(container.firstChild);
+                else slide.appendChild(container.firstChild);
+            }
+            container.appendChild(slide);
+            container._slide = slide;
+            slide._offset = 0;
+            if (offset) setOffset(container, offset, false);
+        }
+        return slide;
+    }
+
+    function offsetOf(container) {
+        return container && container._slide ? container._slide._offset || 0 : 0;
+    }
+
+    function setOffset(container, value, animate) {
+        var slide = slideOf(container);
+        var axis = container.getAttribute('data-scroll');
+        var size = axis === 'x' ? slide.offsetWidth - container.clientWidth : slide.offsetHeight - container.clientHeight;
+        value = Math.max(0, Math.min(Math.max(0, size), Math.round(value)));
+        if (value === slide._offset) return;
+        slide._offset = value;
+        slide.style.transition = animate ? '' : 'none';
+        slide.style.transform = axis === 'x' ? 'translate3d(' + -value + 'px,0,0)' : 'translate3d(0,' + -value + 'px,0)';
+        if (!animate) { slide.offsetWidth; slide.style.transition = ''; }
+    }
+
+    // Position de el dans la glissière (sans le zoom de la carte sélectionnée).
+    function positionIn(el, slide) {
+        var x = 0, y = 0, p = el;
+        while (p && p !== slide) { x += p.offsetLeft; y += p.offsetTop; p = p.offsetParent; }
+        return { x: x, y: y };
+    }
+
     function ensureVisible(el) {
-        var smooth = doc.body.getAttribute('data-anim') !== 'off';
+        var animate = doc.body.getAttribute('data-anim') !== 'off';
         var track = scrollParent(el, 'x');
         if (track) {
-            // Défilement carte par carte : les cartes visibles restent entières.
-            // offsetLeft/offsetWidth ignorent le zoom de la carte sélectionnée.
+            // Carte par carte : les cartes visibles restent entières.
+            var slide = slideOf(track);
             var pad = parseFloat(global.getComputedStyle(track).paddingLeft) || 0;
-            var x = el.offsetLeft - track.offsetLeft;
-            var left = track.scrollLeft;
+            var x = positionIn(el, slide).x;
+            var left = slide._offset;
             if (x - pad < left) left = x - pad;
             else if (x + el.offsetWidth + pad > left + track.clientWidth) left = x + el.offsetWidth + pad - track.clientWidth;
-            if (left !== track.scrollLeft) scrollTo(track, { left: Math.max(0, left) }, smooth);
+            setOffset(track, left, animate);
         }
         var pane = scrollParent(el, 'y');
         if (pane) {
-            var pr = pane.getBoundingClientRect();
+            var pslide = slideOf(pane);
             var box = el.closest('[data-scroll-anchor]') || el;
-            var br = box.getBoundingClientRect();
-            var top = pane.scrollTop;
+            var by = positionIn(box, pslide).y;
+            var top = pslide._offset;
             var margin = 90; // de la place pour le nom affiché sous la carte
-            if (br.top < pr.top + margin) top += br.top - pr.top - margin;
-            else if (br.bottom > pr.bottom - margin) top += br.bottom - pr.bottom + margin;
-            if (top !== pane.scrollTop) scrollTo(pane, { top: Math.max(0, top) }, smooth);
-        }
-    }
-
-    function scrollTo(el, pos, smooth) {
-        if (el.scrollTo) {
-            pos.behavior = smooth ? 'smooth' : 'auto';
-            el.scrollTo(pos);
-        } else {
-            if (pos.left !== undefined) el.scrollLeft = pos.left;
-            if (pos.top !== undefined) el.scrollTop = pos.top;
+            if (by - top < margin) top = by - margin;
+            else if (by + box.offsetHeight - top > pane.clientHeight - margin) top = by + box.offsetHeight - pane.clientHeight + margin;
+            setOffset(pane, top, animate);
         }
     }
 
@@ -166,6 +204,8 @@
         set: set,
         onChange: function (fn) { listeners.push(fn); },
         move: move,
+        offsetOf: offsetOf,
+        setOffset: setOffset,
         forget: function (row) { var s = scope(); if (s) delete s.memory[row]; },
         recall: function (row) { var s = scope(); return s ? s.memory[row] : null; },
         // Ouvre une zone de focus (page principale, fenêtre…).

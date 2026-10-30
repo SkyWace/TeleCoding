@@ -107,13 +107,15 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
     await press(page, 'ArrowDown');
     check((await focused(page)).row === 'row-2', 'bas : ligne suivante');
     await page.waitForTimeout(400);
+    check(await page.evaluate(() => TC.focus.offsetOf(document.getElementById('page'))) > 0, 'la page glisse vers la grille');
     await shot('grille');
     await press(page, 'ArrowUp');
     check((await focused(page)).app === gridBefore, 'haut : retrouve la dernière appli visitée');
     await press(page, 'ArrowUp');
     check((await focused(page)).app === first, 'haut : retour dans la bande');
     await page.waitForTimeout(600);
-    check(await page.evaluate(() => document.getElementById('page').scrollTop) === 0, 'la page remonte en haut');
+    check(await page.evaluate(() => TC.focus.offsetOf(document.getElementById('page'))) === 0, 'la page remonte en haut');
+    check(await page.evaluate(() => document.getElementById('page').scrollTop) === 0, 'aucun défilement natif (tout passe par transform)');
     await press(page, 'ArrowUp');
     check((await focused(page)).row === 'header', 'haut : pastilles de l’en-tête');
     await press(page, 'ArrowDown');

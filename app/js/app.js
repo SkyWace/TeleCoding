@@ -275,7 +275,7 @@
     function renderDock(apps, cols) {
         var dock = doc.getElementById('dock');
         var old = dock.querySelector('.track');
-        var scroll = old ? old.scrollLeft : 0;
+        var scroll = TC.focus.offsetOf(old);
         var tiles = apps.slice(0, cols).map(function (a) { return appTile(a, 'dock'); });
         if (!tiles.length && state.appsLoaded) {
             tiles.push(h('button', { class: 'tile ghost focusable', 'data-row': 'dock', 'data-action': 'library' }, [
@@ -288,7 +288,7 @@
         dock.innerHTML = '';
         var track = h('div', { class: 'track', 'data-scroll': 'x' }, tiles);
         dock.appendChild(h('div', { class: 'band' }, [track]));
-        track.scrollLeft = scroll;
+        TC.focus.setOffset(track, scroll, false);
     }
 
     function renderGrid(apps, cols) {
@@ -667,10 +667,10 @@
             var list = ctx.panel.querySelector('.list');
             var cur = TC.focus.current;
             var key = cur ? cur.getAttribute('data-setting') : null;
-            var scroll = list.scrollTop;
+            var scroll = TC.focus.offsetOf(list);
             list.innerHTML = '';
             build(list);
-            list.scrollTop = scroll;
+            TC.focus.setOffset(list, scroll, false);
             var target = key ? list.querySelector('[data-setting="' + key.replace(/"/g, '\\"') + '"]') : null;
             TC.focus.set(target || list.querySelector('.focusable'));
         }

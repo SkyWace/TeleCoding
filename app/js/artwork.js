@@ -145,11 +145,29 @@
         return [top, hsvToRgb(hsv[0], hsv[1], hsv[2] * 0.6)];
     }
 
+    // Couleurs déjà calculées, gardées d'un lancement à l'autre : le démarrage ne relit plus les icônes.
+    var CACHE_KEY = 'telecoding.artwork.v1';
+    var cache = {};
+    try { cache = JSON.parse(global.localStorage.getItem(CACHE_KEY) || '{}') || {}; } catch (e) { cache = {}; }
+    var saveTimer = null;
+    function remember(key, value) {
+        cache[key] = value;
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () {
+            try { global.localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch (e) { /* stockage plein */ }
+        }, 1500);
+    }
+
     /** { glow, backdrop: [haut, bas] } pour une icône chargée, ou null si elle est illisible. */
     function analyze(img) {
+        var src = img.getAttribute('src') || '';
+        var key = src.indexOf('data:') === 0 ? null : src; // pas de clé pour les icônes d'aperçu
+        if (key && cache[key]) return cache[key];
         try {
             var glow = dominantColor(img);
-            return { glow: glow, backdrop: backdrop(img, glow) };
+            var out = { glow: glow, backdrop: backdrop(img, glow) };
+            if (key) remember(key, out);
+            return out;
         } catch (e) {
             return null; // canvas protégé : la carte garde son fond par défaut
         }

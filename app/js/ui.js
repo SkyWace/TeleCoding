@@ -105,7 +105,29 @@
         } else {
             img.style.height = size + '%'; // la largeur suit les proportions du logo, bornée à 76 %
         }
-        if (b.white) img.style.filter = 'brightness(0) invert(1)';
+        // Logo à passer en blanc : on le recolore une fois dans un canvas plutôt qu'avec un filtre CSS,
+        // que la TV recalculerait à chaque image pendant le zoom de la carte.
+        if (b.white) {
+            img.style.visibility = 'hidden';
+            img.onload = function () {
+                img.onload = null;
+                try {
+                    var k = Math.min(2, 800 / (img.naturalWidth || 800));
+                    var c = doc.createElement('canvas');
+                    c.width = Math.max(1, Math.round((img.naturalWidth || 400) * k));
+                    c.height = Math.max(1, Math.round((img.naturalHeight || 200) * k));
+                    var cx = c.getContext('2d');
+                    cx.drawImage(img, 0, 0, c.width, c.height);
+                    cx.globalCompositeOperation = 'source-in';
+                    cx.fillStyle = '#fff';
+                    cx.fillRect(0, 0, c.width, c.height);
+                    img.src = c.toDataURL('image/png');
+                } catch (e) {
+                    img.style.filter = 'brightness(0) invert(1)'; // canvas refusé : filtre en secours
+                }
+                img.style.visibility = '';
+            };
+        }
         img.onerror = function () { box.innerHTML = ''; box.appendChild(h('span', { class: 'label', text: app.name })); };
         box.appendChild(img);
         colors[app.id + '|pack'] = { bg: b.glow, glow: b.glow };
@@ -167,13 +189,30 @@
             this.timer = setTimeout(function () { self.paint(rgb); }, 90);
         },
         paint: function (rgb) {
-            if (!this.layers) this.layers = doc.querySelectorAll('#ambient .glow');
+            if (!this.layers) {
+                // Comme CleanYourTV (setAmbient) : un dégradé plein écran redessiné à chaque appli fait
+                // ramer une TV. On peint un petit canvas de 192×108, étiré par la carte graphique ;
+                // les deux calques se relaient en fondu (opacité seulement : rien n'est redessiné).
+                this.layers = Array.prototype.map.call(doc.querySelectorAll('#ambient .glow'), function (layer) {
+                    var c = doc.createElement('canvas');
+                    c.width = 192; c.height = 108;
+                    c.className = 'glow';
+                    layer.parentNode.replaceChild(c, layer);
+                    return c;
+                });
+            }
             if (!this.layers.length) return;
-            // Même dégradé que CleanYourTV (setAmbient) : centre à 32 % / 42 %, rayon 62 % de la largeur,
-            // alpha 0x5C puis 0x26 à mi-chemin.
             var next = this.layers[1 - this.current];
-            next.style.background =
-                'radial-gradient(circle 74.4rem at 32% 42%, ' + css(rgb, 0.36) + ' 0%, ' + css(rgb, 0.15) + ' 45%, rgba(0,0,0,0) 100%)';
+            var ctx = next.getContext('2d');
+            var w = next.width, hh = next.height;
+            ctx.clearRect(0, 0, w, hh);
+            // Même dégradé que leur code : centre à 32 % / 42 %, rayon 62 % de la largeur, alpha 0x5C puis 0x26.
+            var g = ctx.createRadialGradient(w * 0.32, hh * 0.42, 0, w * 0.32, hh * 0.42, w * 0.62);
+            g.addColorStop(0, css(rgb, 0.36));
+            g.addColorStop(0.45, css(rgb, 0.15));
+            g.addColorStop(1, css(rgb, 0));
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, w, hh);
             next.classList.add('on');
             this.layers[this.current].classList.remove('on');
             this.current = 1 - this.current;
