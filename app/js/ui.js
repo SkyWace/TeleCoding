@@ -186,7 +186,7 @@
             var self = this;
             clearTimeout(this.timer);
             // Petit délai : on ne repeint pas à chaque carte quand on fait défiler vite.
-            this.timer = setTimeout(function () { self.paint(rgb); }, 90);
+            this.timer = setTimeout(function () { self.paint(rgb); }, 160);
         },
         paint: function (rgb) {
             if (!this.layers) {

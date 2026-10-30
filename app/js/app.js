@@ -749,6 +749,9 @@
             }));
 
             list.appendChild(h('div', { class: 'group', text: 'Système' }));
+            list.appendChild(row('Afficher les performances', s.showPerf ? 'Activé' : 'Désactivé', {
+                cycle: function () { set({ showPerf: !s.showPerf }); applyPerf(); }
+            }));
             list.appendChild(row('Actualiser les applications', '', {
                 activate: function () { refreshAll().then(function () { TC.ui.toast('Applications actualisées'); }); }
             }));
@@ -761,6 +764,33 @@
                 'toujours le Smart Hub : c’est imposé par le système. Pour que TeleCoding s’ouvre au démarrage, active ' +
                 '« Exécution auto. de la dernière appli » dans les réglages de la TV.' }));
         }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Compteur de performances (Paramètres du lanceur ▸ Afficher les performances) */
+    /* ------------------------------------------------------------------ */
+    var perf = { raf: 0, frames: [], last: 0, timer: 0 };
+    function perfLoop(t) {
+        if (perf.last) perf.frames.push({ t: t, d: t - perf.last });
+        perf.last = t;
+        perf.raf = requestAnimationFrame(perfLoop);
+    }
+    function perfShow() {
+        var now = performance.now();
+        perf.frames = perf.frames.filter(function (f) { return now - f.t < 5000; });
+        var lastSec = perf.frames.filter(function (f) { return now - f.t < 1000; });
+        var worst = 0, slow = 0;
+        perf.frames.forEach(function (f) { worst = Math.max(worst, f.d); if (f.d > 50) slow++; });
+        doc.getElementById('perf').textContent =
+            lastSec.length + ' images/s\npire image (5 s) : ' + Math.round(worst) + ' ms\nimages > 50 ms : ' + slow;
+    }
+    function applyPerf() {
+        var on = store.get().showPerf;
+        doc.getElementById('perf').hidden = !on;
+        cancelAnimationFrame(perf.raf);
+        clearInterval(perf.timer);
+        perf.frames = []; perf.last = 0;
+        if (on) { perf.raf = requestAnimationFrame(perfLoop); perf.timer = setInterval(perfShow, 500); }
     }
 
     /* ------------------------------------------------------------------ */
@@ -882,6 +912,11 @@
             if (el._activate) el._activate(); else if (!state.overlay) activate(el);
         });
         TC.focus.onChange(onFocus);
+        // Le défilement passe par transform (focus.js). Si la TV fait défiler un conteneur
+        // d'elle-même (focus d'un élément hors champ), on l'annule aussitôt.
+        Array.prototype.forEach.call(doc.querySelectorAll('#page, .track'), function (c) {
+            c.addEventListener('scroll', function () { if (c.scrollTop || c.scrollLeft) { c.scrollTop = 0; c.scrollLeft = 0; } });
+        });
         // Les couleurs d'une icône arrivent quand elle est chargée : on rafraîchit le halo.
         TC.ui.colorReady = function (id) {
             var el = TC.focus.current;
@@ -901,6 +936,7 @@
         });
 
         applyLook();
+        applyPerf();
         scheduleClock();
         refreshNetwork();
         TC.focus.push(doc.getElementById('app'));

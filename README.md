@@ -126,6 +126,9 @@ npm install && npm test
 - **pas d'ombre floue ni de filtre CSS** : l'anneau de sélection est fait d'anneaux nets, et les logos à passer en blanc sont recolorés une seule fois ;
 - **les couleurs des icônes sont mémorisées** d'un lancement à l'autre, et la dernière liste d'applis s'affiche tout de suite au démarrage.
 
+- **les cartes ne découpent pas leur contenu aux coins arrondis** : sur une puce graphique de TV, chaque carte animée découpée demande un masque, très lent ;
+- **un compteur d'images par seconde** s'affiche en haut à droite avec *Paramètres du lanceur ▸ Afficher les performances*, pour mesurer sur la TV elle-même.
+
 Mesuré dans Chromium (16 appuis de télécommande) : rastérisation de 918 ms à environ 170 ms, peinture de 376 ms à environ 200 ms.
 
 ### État des tests
