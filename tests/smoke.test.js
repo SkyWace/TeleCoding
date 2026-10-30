@@ -129,6 +129,9 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
     await page.waitForTimeout(150);
     check((await page.textContent('#toast')).includes('lancement'), 'OK lance l’application');
     check(await page.evaluate(() => TC.platform.lastLaunchMode) === 'GROUP', 'lancement en mode groupe (Retour revient à TeleCoding)');
+    check(await page.evaluate(() => TC.platform.watched) === f.app, 'l’appli lancée est surveillée');
+    await page.evaluate(() => TC.platform.simulateClose());
+    check(await page.evaluate(() => TC.platform.broughtBack) === 1, 'appli fermée : TeleCoding revient au premier plan');
 
     console.log('Sources');
     await press(page, 'ArrowUp');

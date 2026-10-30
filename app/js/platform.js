@@ -167,6 +167,51 @@
             }).catch(plain);
         },
 
+        /*
+         * Surveille une appli lancée depuis TeleCoding (Tizen 4.0+, addAppStatusChangeListener).
+         * Quand elle se désactive, on regarde si elle tourne encore :
+         *  - fermée (Retour jusqu'à la quitter) -> onClosed() ;
+         *  - encore en mémoire (touche HOME, mise en pause) -> rien, HOME garde le Smart Hub.
+         * Renvoie false si la TV ne propose pas cette API.
+         */
+        watchApp: function (id, onClosed) {
+            var app = tz.application;
+            if (!app.addAppStatusChangeListener || !app.getAppsContext) return false;
+            this.unwatchApp();
+            var self = this, seenActive = false;
+            try {
+                this._watch = app.addAppStatusChangeListener(function (appId, isActive) {
+                    if (isActive) { seenActive = true; return; }
+                    if (!seenActive) return;
+                    setTimeout(function () {
+                        app.getAppsContext(function (contexts) {
+                            var running = contexts.some(function (c) { return c.appId === id; });
+                            // Dans les deux cas on arrête de surveiller : après HOME, TeleCoding ne doit
+                            // pas surgir plus tard si la TV ferme l'appli pour libérer de la mémoire.
+                            self.unwatchApp();
+                            if (!running) onClosed();
+                        }, function () { /* contexte illisible : on ne fait rien */ });
+                    }, 600);
+                }, id);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        },
+
+        unwatchApp: function () {
+            if (this._watch === undefined || this._watch === null) return;
+            try { tz.application.removeAppStatusChangeListener(this._watch); } catch (e) { /* déjà retiré */ }
+            this._watch = null;
+        },
+
+        // Remet TeleCoding au premier plan.
+        bringToFront: function () {
+            var self = SELF_ID;
+            try { self = tz.application.getCurrentApplication().appInfo.id; } catch (e) { /* valeur par défaut */ }
+            return promisify(function (ok, ko) { tz.application.launch(self, ok, ko); });
+        },
+
         listInputs: function () {
             if (!tz.systeminfo || !tz.tvwindow) {
                 return Promise.reject(new Error('API TVWindow absente sur ce modèle'));
@@ -296,6 +341,11 @@
         listInputs: function () {
             return Promise.resolve(normalizeSources(mockSources));
         },
+        watchApp: function (id, onClosed) { this.watched = id; this._onClosed = onClosed; return true; },
+        unwatchApp: function () { this.watched = null; this._onClosed = null; },
+        // Tests : simule la fermeture de l'appli surveillée.
+        simulateClose: function () { var fn = this._onClosed; this.unwatchApp(); if (fn) fn(); },
+        bringToFront: function () { this.broughtBack = (this.broughtBack || 0) + 1; return Promise.resolve(); },
         watchInput: function (source) {
             this.watching = source.key;
             return Promise.resolve();

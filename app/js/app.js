@@ -144,6 +144,8 @@
     }
 
     function scheduleClock() {
+        // Masqué (une appli est ouverte par-dessus) : pas de mise à jour, TeleCoding ne consomme rien.
+        if (doc.hidden) { setTimeout(scheduleClock, 3000); return; }
         tick();
         setTimeout(scheduleClock, 1000 - (Date.now() % 1000) + 5);
     }
@@ -344,7 +346,10 @@
     /* Actions                                                             */
     /* ------------------------------------------------------------------ */
     function launch(app) {
-        platform.launchApp(app.id, { group: store.get().returnToLauncher }).then(function () {
+        var back = store.get().returnToLauncher;
+        // Retour vers TeleCoding : quand l'appli lancée se ferme, TeleCoding revient au premier plan.
+        if (back) platform.watchApp(app.id, function () { platform.bringToFront().catch(function () { /* refusé */ }); });
+        platform.launchApp(app.id, { group: back }).then(function () {
             if (platform.preview) TC.ui.toast('Aperçu : lancement de ' + app.name);
         }).catch(function (err) {
             TC.ui.toast(T.cantOpen + app.name + ' (' + platform.errorText(err) + ')', 5000);
@@ -933,6 +938,7 @@
         });
         doc.addEventListener('visibilitychange', function () {
             if (doc.hidden) return;
+            platform.unwatchApp && platform.unwatchApp(); // de retour : plus besoin de surveiller
             tick();
             refreshAll();
             refreshWeather();
