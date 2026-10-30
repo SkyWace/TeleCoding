@@ -133,6 +133,33 @@ const hero = (page) => page.evaluate(() => document.getElementById('hero').textC
     await page.evaluate(() => TC.platform.simulateClose());
     check(await page.evaluate(() => TC.platform.broughtBack) === 1, 'appli fermée : TeleCoding revient au premier plan');
 
+    console.log('Mode accueil');
+    const back0 = await page.evaluate(() => TC.platform.broughtBack || 0);
+    const hide = (v) => page.evaluate((x) => Object.defineProperty(document, 'hidden', { configurable: true, get: () => x }), v);
+    await hide(true);
+    await page.evaluate(() => TC.platform.simulateStatus('com.samsung.tv.coba.newhome', true));
+    await page.waitForTimeout(400);
+    check(await page.evaluate(() => TC.platform.broughtBack) === back0 + 1, 'HOME : le Smart Hub s’ouvre, TeleCoding reprend la main');
+    await page.evaluate(() => TC.platform.simulateStatus('com.samsung.tv.coba.newhome', true));
+    await page.waitForTimeout(400);
+    check(await page.evaluate(() => TC.platform.broughtBack) === back0 + 1, 'double HOME : on reste sur le Smart Hub');
+    await page.evaluate(() => TC.platform.simulateStatus('org.tizen.tv-viewer', true));
+    await page.waitForTimeout(400);
+    check(await page.evaluate(() => TC.platform.broughtBack) === back0 + 1, 'touche SOURCE (tv-viewer) : TeleCoding ne réagit pas');
+    await hide(false);
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await hide(true);
+    await page.evaluate(() => { TC.platform.simulateStatus('org.tizen.netflix-app', true); TC.platform.simulateStatus('com.samsung.tv.home.media', true); });
+    await page.waitForTimeout(400);
+    check(await page.evaluate(() => TC.platform.broughtBack) === back0 + 1, 'pendant Netflix : TeleCoding ne réagit pas');
+    await page.evaluate(() => TC.platform.simulateStatus('org.tizen.netflix-app', false));
+    await page.evaluate(() => TC.platform.simulateStatus('com.samsung.tv.home.media', true));
+    await page.waitForTimeout(400);
+    check(await page.evaluate(() => TC.platform.broughtBack) === back0 + 2, 'Netflix fermée, Smart Hub ouvert : retour sur TeleCoding');
+    await hide(false);
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await page.waitForTimeout(200);
+
     console.log('Sources');
     await press(page, 'ArrowUp');
     await until(page, 'ArrowLeft', (x) => x.action === 'inputs');

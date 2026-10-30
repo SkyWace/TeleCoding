@@ -748,6 +748,15 @@
                 }));
             }
 
+            list.appendChild(row('Mode accueil (HOME ramène à TeleCoding)', s.homeMode ? 'Activé' : 'Désactivé', {
+                cycle: function () { set({ homeMode: !s.homeMode }); }
+            }));
+            list.appendChild(row('Journal des applis (diagnostic)', home.log.length + ' événement(s)', {
+                activate: function () {
+                    openMenu('Applis activées (▲) / désactivées (▽)', (home.log.length ? home.log : ['Aucun événement pour l’instant'])
+                        .map(function (line) { return [line, closeOverlay]; }));
+                }
+            }));
             list.appendChild(row('Retour vers TeleCoding après une appli', s.returnToLauncher ? 'Activé' : 'Désactivé', {
                 cycle: function () { set({ returnToLauncher: !s.returnToLauncher }); }
             }));
@@ -769,10 +778,41 @@
             }));
             list.appendChild(row('Quitter TeleCoding', '', { activate: function () { platform.exit(); } }));
             list.appendChild(h('p', { class: 'text small', text:
-                'TeleCoding 3.0 · design et code adaptés de CleanYourTV (MIT). Sur Samsung, la touche HOME ouvre ' +
-                'toujours le Smart Hub : c’est imposé par le système. Pour que TeleCoding s’ouvre au démarrage, active ' +
-                '« Exécution auto. de la dernière appli » dans les réglages de la TV.' }));
+                'TeleCoding 3.1 · design et code adaptés de CleanYourTV (MIT). Mode accueil : HOME ouvre le Smart Hub ' +
+                'puis TeleCoding reprend la main ; deux appuis rapides sur HOME laissent le Smart Hub ouvert. Pour que ' +
+                'TeleCoding s’ouvre au démarrage, active « Exécution auto. de la dernière appli » dans les réglages de la TV.' }));
         }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Mode accueil : TeleCoding reprend la main quand le Smart Hub s'ouvre */
+    /* ------------------------------------------------------------------ */
+    /*
+     * Samsung ne laisse pas une appli remplacer le Smart Hub (il faudrait rooter la TV). À la place,
+     * TeleCoding reste à l'écoute en arrière-plan : quand une appli du Smart Hub s'active (touche HOME,
+     * sortie d'une appli) et qu'aucune appli n'est ouverte, il revient au premier plan.
+     * Échappatoire : deux appuis sur HOME en moins de 2,5 s laissent le Smart Hub ouvert,
+     * jusqu'au prochain retour dans TeleCoding.
+     */
+    var home = { activeUserApp: null, lastReturn: 0, escaped: false, log: [] };
+
+    function onAppStatus(appId, active) {
+        home.log.unshift((active ? '▲ ' : '▽ ') + appId + '  ' + new Date().toLocaleTimeString('fr-FR'));
+        home.log.length = Math.min(home.log.length, 20);
+        if (TC.platform.isUserApp(appId)) {
+            if (active) { home.activeUserApp = appId; home.lastReturn = 0; } // une appli ouverte : pas un double HOME
+            else if (home.activeUserApp === appId) home.activeUserApp = null;
+            return;
+        }
+        if (!active || !TC.platform.isSmartHub(appId)) return;
+        // L'ordre des événements (appli qui se ferme / Smart Hub qui s'ouvre) varie : on laisse passer 300 ms.
+        setTimeout(function () {
+            if (!store.get().homeMode || !doc.hidden || home.escaped || home.activeUserApp) return;
+            var now = Date.now();
+            if (now - home.lastReturn < 2500) { home.escaped = true; return; } // double HOME : on laisse le Smart Hub
+            home.lastReturn = now;
+            platform.bringToFront().catch(function () { /* refusé par la TV */ });
+        }, 300);
     }
 
     /* ------------------------------------------------------------------ */
@@ -921,6 +961,7 @@
             if (el._activate) el._activate(); else if (!state.overlay) activate(el);
         });
         TC.focus.onChange(onFocus);
+        platform.onAppStatus(onAppStatus);
         // Le défilement passe par transform (focus.js). Si la TV fait défiler un conteneur
         // d'elle-même (focus d'un élément hors champ), on l'annule aussitôt.
         Array.prototype.forEach.call(doc.querySelectorAll('#page, .track'), function (c) {
@@ -939,6 +980,7 @@
         doc.addEventListener('visibilitychange', function () {
             if (doc.hidden) return;
             platform.unwatchApp && platform.unwatchApp(); // de retour : plus besoin de surveiller
+            home.escaped = false;
             tick();
             refreshAll();
             refreshWeather();

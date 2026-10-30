@@ -53,6 +53,13 @@
         network: ['com.samsung.tv.coba.setting.networksettings', 'org.tizen.NetworkSetting-Tizen']
     };
 
+    /*
+     * Applis du Smart Hub (l'accueil Samsung), relevées sur une UE43CU7025 avec « sdb shell 0 applist ».
+     * Le mode accueil de TeleCoding ne réagit qu'à elles : jamais aux sources, réglages, volume, etc.
+     */
+    var SMART_HUB = /^(com\.samsung\.tv\.coba\.newhome|com\.samsung\.tv\.home\.|com\.samsung\.tv\.homeupdateview$)/;
+    function isSmartHub(id) { return SMART_HUB.test(id || ''); }
+
     function isUserApp(id) {
         if (/-dummy$/.test(id)) return false;
         if (BUILTIN_APPS.indexOf(id) >= 0) return true;
@@ -205,6 +212,12 @@
             this._watch = null;
         },
 
+        // Toutes les activations / désactivations d'applis (Tizen 4.0+). false si l'API manque.
+        onAppStatus: function (cb) {
+            if (!tz.application.addAppStatusChangeListener) return false;
+            try { tz.application.addAppStatusChangeListener(cb); return true; } catch (e) { return false; }
+        },
+
         // Remet TeleCoding au premier plan.
         bringToFront: function () {
             var self = SELF_ID;
@@ -346,6 +359,9 @@
         // Tests : simule la fermeture de l'appli surveillée.
         simulateClose: function () { var fn = this._onClosed; this.unwatchApp(); if (fn) fn(); },
         bringToFront: function () { this.broughtBack = (this.broughtBack || 0) + 1; return Promise.resolve(); },
+        onAppStatus: function (cb) { this._status = cb; return true; },
+        // Tests : simule l'activation / la désactivation d'une appli.
+        simulateStatus: function (id, active) { if (this._status) this._status(id, active); },
         watchInput: function (source) {
             this.watching = source.key;
             return Promise.resolve();
@@ -363,5 +379,6 @@
     TC.platform = isTizen ? tizenImpl : previewImpl;
     TC.platform.errorText = errorText;
     TC.platform.isUserApp = isUserApp;
+    TC.platform.isSmartHub = isSmartHub;
     TC.KEYS = KEYS;
 })(this);

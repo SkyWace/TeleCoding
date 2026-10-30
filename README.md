@@ -27,7 +27,7 @@ La CU7025 tourne sous **Tizen** (le système de Samsung), pas sous Android TV. �
 | Lancer une appli | ✅ | `tizen.application.launch()` |
 | Sources HDMI | ✅ (dans l'appli) | Pastille **Sources** (menu déroulant). `tizen.tvwindow.setSource()` : l'entrée s'affiche en plein écran *dans* TeleCoding, et Retour ramène à l'accueil |
 | Revenir à TeleCoding en quittant une appli (Retour) | ⚠️ à confirmer | TeleCoding surveille l'appli qu'il a lancée (`tizen.application.addAppStatusChangeListener`, Tizen 4.0+, d'où `background-support="enable"`). Si elle se ferme, il revient au premier plan ; si on l'a quittée avec HOME (encore en mémoire), il ne fait rien et HOME garde le Smart Hub. En plus, lancement en « mode groupe » Tizen (`launchMode: 'GROUP'`), que certaines applis respectent. Réglage : *Paramètres du lanceur ▸ Retour vers TeleCoding après une appli* |
-| Remplacer le Smart Hub / la touche HOME | ❌ | Impossible sur Tizen pour une appli tierce. HOME ouvre toujours le Smart Hub |
+| Remplacer le Smart Hub / la touche HOME | ⚠️ à confirmer | Impossible officiellement (il faudrait rooter la TV). **Mode accueil** : TeleCoding reste à l'écoute en arrière-plan ; quand le Smart Hub s'ouvre (HOME, sortie d'une appli) et qu'aucune appli n'est ouverte, il revient au premier plan. **Deux appuis rapides sur HOME** laissent le Smart Hub ouvert. Ne réagit ni aux sources, ni aux réglages, ni pendant une appli. Journal de diagnostic dans les paramètres |
 | Ouvrir TeleCoding à l'allumage | ⚠️ | Réglage Samsung « Exécution auto. de la dernière appli », à activer soi-même |
 
 Limites connues de l'affichage HDMI dans l'appli : tant que TeleCoding affiche la source, les flèches et OK restent captées par l'appli, donc le pilotage Anynet+ (HDMI-CEC) de l'appareil branché ne passe pas. Pour piloter une console ou une box avec la télécommande de la TV, utilise la touche **SOURCE**.
@@ -42,7 +42,7 @@ Limites connues de l'affichage HDMI dans l'appli : tant que TeleCoding affiche l
 | Retour | Fermer un menu, quitter une source HDMI, revenir à la première appli |
 | Menu / Tools / Jaune | Options de l'appli sélectionnée (sinon le menu rapide) |
 | Bleu | Paramètres du lanceur |
-| HOME | Smart Hub Samsung (imposé par le système) |
+| HOME | Retour à TeleCoding (mode accueil) ; deux appuis rapides : Smart Hub Samsung |
 
 **Réorganiser les applis** (appui long ▸ Déplacer, ou Paramètres ▸ Réorganiser les applis) : OK prend une appli, les flèches la déplacent (◀ ▶ d'une place, ▲ ▼ d'une ligne, de la bande à la grille), Retour la pose, Retour à nouveau pour terminer.
 
@@ -134,5 +134,5 @@ Mesuré dans Chromium (16 appuis de télécommande) : rastérisation de 918 ms �
 
 ### État des tests
 
-- ✅ **Interface, dans Chromium avec API simulées** : 77 vérifications (navigation, logos, halo, sources, menu rapide, réorganisation, bibliothèque, paramètres, persistance, migration, aucune erreur JS).
+- ✅ **Interface, dans Chromium avec API simulées** : 82 vérifications (navigation, logos, halo, sources, menu rapide, réorganisation, bibliothèque, paramètres, persistance, migration, aucune erreur JS).
 - ⏳ **Sur la vraie TV** : pas encore testé (icônes des applis, `tvwindow`, touches couleur, appui long, scripts PowerShell).
